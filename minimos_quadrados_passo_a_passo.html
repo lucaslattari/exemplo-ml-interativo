@@ -1,0 +1,251 @@
+
+<h2 class="sr-only">Calculadora passo a passo do método dos mínimos quadrados com tabela e gráfico interativo</h2>
+<style>
+*{box-sizing:border-box}
+.root{padding:1rem 0;font-family:var(--font-sans)}
+.step-block{margin-bottom:1.5rem}
+.step-title{font-size:13px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px}
+.mono{font-family:var(--font-mono);font-size:13px}
+table.calc{width:100%;border-collapse:collapse;font-size:13px;font-family:var(--font-mono)}
+table.calc th{font-size:11px;font-weight:500;color:var(--color-text-secondary);text-align:center;padding:6px 4px;border-bottom:0.5px solid var(--color-border-tertiary)}
+table.calc td{text-align:center;padding:5px 4px;border-bottom:0.5px solid var(--color-border-tertiary);color:var(--color-text-primary)}
+table.calc tr:last-child td{font-weight:500;background:var(--color-background-secondary);color:var(--color-text-primary)}
+.formula-row{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px}
+.formula-pill{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:8px 14px;font-family:var(--font-mono);font-size:14px;color:var(--color-text-primary)}
+.result-big{font-size:20px;font-weight:500;color:var(--color-text-primary);font-family:var(--font-mono)}
+.edit-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1.25rem;align-items:center}
+.pt-tag{display:flex;align-items:center;gap:4px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:4px 8px;font-size:13px;font-family:var(--font-mono);color:var(--color-text-primary)}
+.pt-tag button{background:none;border:none;cursor:pointer;padding:0 2px;font-size:14px;color:var(--color-text-secondary);line-height:1}
+.add-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:1.5rem}
+.add-row input{width:70px;font-family:var(--font-mono)}
+.add-row button,.reset-btn{font-size:13px}
+.highlight-blue{color:#185FA5}
+.highlight-coral{color:#993C1D}
+.canvas-wrap{position:relative;width:100%;margin-top:1rem}
+canvas#mqc{display:block;width:100%;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary)}
+.divider{border:none;border-top:0.5px solid var(--color-border-tertiary);margin:1.5rem 0}
+</style>
+
+<div class="root">
+
+<div class="step-block">
+  <p class="step-title">dataset — edite os pontos</p>
+  <div class="edit-row" id="ptTags"></div>
+  <div class="add-row">
+    <span style="font-size:13px;color:var(--color-text-secondary)">adicionar ponto:</span>
+    <input type="number" id="inX" placeholder="x" step="0.1">
+    <input type="number" id="inY" placeholder="y" step="0.1">
+    <button onclick="addPt()">+ adicionar</button>
+    <button class="reset-btn" onclick="resetPts()">restaurar exemplo</button>
+  </div>
+</div>
+
+<hr class="divider">
+
+<div class="step-block">
+  <p class="step-title">passo 1 — calcular as médias</p>
+  <div class="formula-row">
+    <div class="formula-pill">x̄ = <span id="mx" class="highlight-blue"></span></div>
+    <div class="formula-pill">ȳ = <span id="my" class="highlight-coral"></span></div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<div class="step-block">
+  <p class="step-title">passo 2 — tabela de desvios e produtos</p>
+  <p style="font-size:13px;color:var(--color-text-secondary);margin:0 0 10px">Cada linha mostra quanto o ponto se afasta da média e o produto dessas diferenças.</p>
+  <div style="overflow-x:auto">
+    <table class="calc" id="tbl">
+      <thead><tr>
+        <th>i</th>
+        <th>xᵢ</th>
+        <th>yᵢ</th>
+        <th>(xᵢ − x̄)</th>
+        <th>(yᵢ − ȳ)</th>
+        <th style="color:#185FA5">(xᵢ−x̄)(yᵢ−ȳ)</th>
+        <th style="color:#993C1D">(xᵢ−x̄)²</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<hr class="divider">
+
+<div class="step-block">
+  <p class="step-title">passo 3 — calcular a inclinação (a)</p>
+  <p style="font-size:13px;color:var(--color-text-secondary);margin:0 0 10px">
+    a = <span class="highlight-blue">Σ(xᵢ−x̄)(yᵢ−ȳ)</span> ÷ <span class="highlight-coral">Σ(xᵢ−x̄)²</span>
+  </p>
+  <p id="aCalc" class="mono" style="margin:0 0 6px"></p>
+  <span class="result-big">a = <span id="aVal"></span></span>
+</div>
+
+<hr class="divider">
+
+<div class="step-block">
+  <p class="step-title">passo 4 — calcular o intercepto (b)</p>
+  <p style="font-size:13px;color:var(--color-text-secondary);margin:0 0 10px">b = ȳ − a·x̄</p>
+  <p id="bCalc" class="mono" style="margin:0 0 6px"></p>
+  <span class="result-big">b = <span id="bVal"></span></span>
+</div>
+
+<hr class="divider">
+
+<div class="step-block">
+  <p class="step-title">resultado final</p>
+  <div class="formula-pill" style="font-size:16px;display:inline-block" id="finalEq"></div>
+  <div class="canvas-wrap"><canvas id="mqc" height="280"></canvas></div>
+</div>
+
+</div>
+
+<script>
+const DEFAULT = [[1,2],[2,3],[3,2.5],[4,4],[5,3.8],[6,5]];
+let pts = DEFAULT.map(p=>[...p]);
+
+function r(v,d=2){return parseFloat(v.toFixed(d))}
+
+function compute(){
+  const n=pts.length;
+  if(n<2) return null;
+  const mx=pts.reduce((s,p)=>s+p[0],0)/n;
+  const my=pts.reduce((s,p)=>s+p[1],0)/n;
+  const rows=pts.map(p=>{
+    const dx=p[0]-mx, dy=p[1]-my;
+    return {x:p[0],y:p[1],dx,dy,dxdy:dx*dy,dx2:dx*dx};
+  });
+  const sdxdy=rows.reduce((s,r)=>s+r.dxdy,0);
+  const sdx2=rows.reduce((s,r)=>s+r.dx2,0);
+  const a=sdxdy/sdx2;
+  const b=my-a*mx;
+  return {mx,my,rows,sdxdy,sdx2,a,b,n};
+}
+
+function render(){
+  const c=compute();
+  if(!c) return;
+  const {mx,my,rows,sdxdy,sdx2,a,b}=c;
+
+  document.getElementById('mx').textContent=r(mx);
+  document.getElementById('my').textContent=r(my);
+
+  const tbody=document.getElementById('tbody');
+  tbody.innerHTML='';
+  rows.forEach((row,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${i+1}</td><td>${r(row.x)}</td><td>${r(row.y)}</td><td>${r(row.dx)}</td><td>${r(row.dy)}</td><td style="color:#185FA5">${r(row.dxdy)}</td><td style="color:#993C1D">${r(row.dx2)}</td>`;
+    tbody.appendChild(tr);
+  });
+  const trSum=document.createElement('tr');
+  trSum.innerHTML=`<td colspan="5" style="text-align:right">Σ →</td><td style="color:#185FA5">${r(sdxdy)}</td><td style="color:#993C1D">${r(sdx2)}</td>`;
+  tbody.appendChild(trSum);
+
+  document.getElementById('aCalc').textContent=`a = ${r(sdxdy)} ÷ ${r(sdx2)}`;
+  document.getElementById('aVal').textContent=r(a,4);
+  document.getElementById('bCalc').textContent=`b = ${r(my)} − ${r(a,4)} × ${r(mx)} = ${r(b,4)}`;
+  document.getElementById('bVal').textContent=r(b,4);
+
+  const sign=b>=0?'+':'';
+  document.getElementById('finalEq').textContent=`y = ${r(a,2)}x ${sign} ${r(b,2)}`;
+
+  drawChart(c);
+  renderTags();
+}
+
+function renderTags(){
+  const div=document.getElementById('ptTags');
+  div.innerHTML='';
+  pts.forEach((p,i)=>{
+    const tag=document.createElement('div');
+    tag.className='pt-tag';
+    tag.innerHTML=`(${r(p[0])}, ${r(p[1])}) <button onclick="removePt(${i})" title="remover">×</button>`;
+    div.appendChild(tag);
+  });
+}
+
+function removePt(i){
+  if(pts.length<=3) return;
+  pts.splice(i,1);
+  render();
+}
+
+function addPt(){
+  const x=parseFloat(document.getElementById('inX').value);
+  const y=parseFloat(document.getElementById('inY').value);
+  if(isNaN(x)||isNaN(y)) return;
+  pts.push([x,y]);
+  document.getElementById('inX').value='';
+  document.getElementById('inY').value='';
+  render();
+}
+
+function resetPts(){pts=DEFAULT.map(p=>[...p]);render();}
+
+function drawChart(c){
+  const canvas=document.getElementById('mqc');
+  const dpr=window.devicePixelRatio||1;
+  const rect=canvas.parentElement.getBoundingClientRect();
+  canvas.width=rect.width*dpr;
+  canvas.height=280*dpr;
+  canvas.style.height='280px';
+  const ctx=canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+  const W=rect.width, H=280;
+  const PAD=44;
+
+  const xs=pts.map(p=>p[0]), ys=pts.map(p=>p[1]);
+  const xmin=Math.min(...xs)-0.5, xmax=Math.max(...xs)+0.5;
+  const ymin=Math.min(...ys)-0.5, ymax=Math.max(...ys)+0.5;
+
+  function tx(v){return PAD+(v-xmin)/(xmax-xmin)*(W-PAD*2);}
+  function ty(v){return H-PAD-(v-ymin)/(ymax-ymin)*(H-PAD*2);}
+
+  const isDark=matchMedia('(prefers-color-scheme: dark)').matches;
+  const gridC=isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.06)';
+  const axC=isDark?'rgba(255,255,255,0.25)':'rgba(0,0,0,0.25)';
+  const txtC=isDark?'rgba(255,255,255,0.5)':'rgba(0,0,0,0.45)';
+
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle=axC; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(PAD,H-PAD); ctx.lineTo(W-PAD,H-PAD); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(PAD,PAD); ctx.lineTo(PAD,H-PAD); ctx.stroke();
+
+  ctx.font=`11px var(--font-mono,monospace)`;
+  ctx.fillStyle=txtC; ctx.textAlign='center';
+  [xmin+0.5,xmax-0.5].concat(xs).filter((v,i,a)=>a.indexOf(v)===i).forEach(v=>{
+    ctx.fillText(r(v,1),tx(v),H-PAD+16);
+  });
+  ctx.textAlign='right';
+
+  const ya=c.a*xmin+c.b, yb=c.a*xmax+c.b;
+  ctx.strokeStyle='#378ADD'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(tx(xmin),ty(ya)); ctx.lineTo(tx(xmax),ty(yb)); ctx.stroke();
+
+  pts.forEach((p,i)=>{
+    const cx=tx(p[0]), cy=ty(p[1]);
+    const yhat=c.a*p[0]+c.b;
+    const chy=ty(yhat);
+    ctx.strokeStyle='rgba(210,90,48,0.4)'; ctx.lineWidth=1.5;
+    ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx,chy); ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.beginPath(); ctx.arc(cx,cy,6,0,Math.PI*2);
+    ctx.fillStyle='#D85A30'; ctx.fill();
+    ctx.strokeStyle=isDark?'rgba(255,255,255,0.15)':'white';
+    ctx.lineWidth=1.5; ctx.stroke();
+
+    ctx.fillStyle=txtC; ctx.font='11px var(--font-mono,monospace)'; ctx.textAlign='center';
+    ctx.fillText(`(${r(p[0])},${r(p[1])})`,cx,cy-12);
+  });
+
+  ctx.fillStyle=isDark?'rgba(55,138,221,0.9)':'#185FA5';
+  ctx.font='12px var(--font-sans,sans-serif)'; ctx.textAlign='left';
+  ctx.fillText(`y = ${r(c.a,2)}x + ${r(c.b,2)}`, tx(xmin)+6, ty(ya)-10);
+}
+
+render();
+window.addEventListener('resize',()=>{const c=compute();if(c)drawChart(c);});
+</script>
