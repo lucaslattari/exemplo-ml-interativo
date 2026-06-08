@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Algoritmos de Regressão — Painel Interativo</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3350;
+    --accent: #6c8cff;
+    --accent2: #ff6c8c;
+    --accent3: #6cffb4;
+    --accent4: #ffc96c;
+    --text: #e8eaf6;
+    --muted: #7b82a8;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 0;
+  }
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 1.2rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  header h1 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+  header span {
+    font-size: 0.8rem;
+    color: var(--muted);
+    background: var(--surface2);
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+  }
+  nav {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1rem 2rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+  nav button {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 0.5rem 1.1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    transition: all 0.15s;
+    font-weight: 500;
+  }
+  nav button.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  nav button:hover:not(.active) {
+    border-color: var(--accent);
+    color: var(--text);
+  }
+  .page { display: none; padding: 2rem; max-width: 1100px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  .section-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 0.3rem;
+  }
+  .section-sub {
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin-bottom: 1.8rem;
+    line-height: 1.5;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.4rem;
+    margin-bottom: 1.2rem;
+  }
+  .card-title {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 0.6rem;
+    font-weight: 600;
+  }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.2rem; }
+  @media (max-width: 760px) {
+    .two-col, .three-col { grid-template-columns: 1fr; }
+    .page { padding: 1rem; }
+    nav { padding: 0.8rem 1rem; }
+    header { padding: 1rem; }
+  }
+
+  label.ctrl-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  label.ctrl-label span { color: var(--text); font-weight: 600; }
+  input[type=range] {
+    width: 100%;
+    accent-color: var(--accent);
+    cursor: pointer;
+    margin-bottom: 10px;
+  }
+  select, input[type=number] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    width: 100%;
+    cursor: pointer;
+    margin-bottom: 10px;
+  }
+  canvas.chart { width: 100% !important; }
+  .metric-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+  .metric {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    flex: 1;
+    min-width: 110px;
+  }
+  .metric-name { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .metric-val { font-size: 1.2rem; font-weight: 700; color: var(--accent3); }
+
+  .badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-weight: 600;
+    margin: 2px;
+  }
+  .badge-blue { background: rgba(108,140,255,0.18); color: var(--accent); border: 1px solid rgba(108,140,255,0.3); }
+  .badge-red  { background: rgba(255,108,140,0.18); color: var(--accent2); border: 1px solid rgba(255,108,140,0.3); }
+  .badge-green{ background: rgba(108,255,180,0.18); color: var(--accent3); border: 1px solid rgba(108,255,180,0.3); }
+  .badge-amber{ background: rgba(255,201,108,0.18); color: var(--accent4); border: 1px solid rgba(255,201,108,0.3); }
+
+  .algo-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.2rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .algo-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .algo-card.selected { border-color: var(--accent); background: rgba(108,140,255,0.08); }
+  .algo-card h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.3rem; }
+  .algo-card p { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
+  .algo-stripe {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+
+  .code-block {
+    background: #090c14;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    font-family: 'Consolas','Courier New',monospace;
+    font-size: 0.8rem;
+    line-height: 1.7;
+    overflow-x: auto;
+    color: #c9d1d9;
+  }
+  .kw { color: #ff79c6; }
+  .fn { color: #8be9fd; }
+  .str { color: #f1fa8c; }
+  .cm { color: #6272a4; }
+  .num { color: #bd93f9; }
+
+  .intuition-box {
+    background: linear-gradient(135deg, rgba(108,140,255,0.08), rgba(108,255,180,0.05));
+    border: 1px solid rgba(108,140,255,0.25);
+    border-radius: var(--radius);
+    padding: 1.2rem;
+    margin-bottom: 1rem;
+  }
+  .intuition-box strong { color: var(--accent); }
+
+  .comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+  .comparison-table th {
+    background: var(--surface2);
+    padding: 8px 12px;
+    text-align: left;
+    color: var(--muted);
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+  }
+  .comparison-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    line-height: 1.5;
+    vertical-align: top;
+  }
+  .comparison-table tr:last-child td { border-bottom: none; }
+  .comparison-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .step {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    align-items: flex-start;
+  }
+  .step-num {
+    background: var(--accent);
+    color: #fff;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .step-body h4 { font-size: 0.88rem; font-weight: 600; margin-bottom: 0.2rem; }
+  .step-body p { font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+
+  .big-formula {
+    text-align: center;
+    font-size: 1.1rem;
+    font-family: 'Georgia', serif;
+    padding: 1rem;
+    color: var(--accent3);
+    letter-spacing: 0.03em;
+  }
+
+  .tabs-inner { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; }
+  .tab-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 5px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.12s;
+  }
+  .tab-btn.on { background: rgba(108,140,255,0.2); border-color: var(--accent); color: var(--accent); }
+  .tab-content { display: none; }
+  .tab-content.on { display: block; }
+
+  .warn-box {
+    background: rgba(255,201,108,0.08);
+    border: 1px solid rgba(255,201,108,0.3);
+    border-radius: 8px;
+    padding: 0.9rem 1rem;
+    font-size: 0.82rem;
+    color: var(--accent4);
+    line-height: 1.6;
+    margin-top: 0.8rem;
+  }
+  .good-box {
+    background: rgba(108,255,180,0.08);
+    border: 1px solid rgba(108,255,180,0.3);
+    border-radius: 8px;
+    padding: 0.9rem 1rem;
+    font-size: 0.82rem;
+    color: var(--accent3);
+    line-height: 1.6;
+    margin-top: 0.8rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📈 Algoritmos de Regressão</h1>
+  <span>Ensino Médio — 3º Ano</span>
+  <span>Data Science / IA</span>
+</header>
+
+<nav>
+  <button class="active" onclick="goPage('intro')">Introdução</button>
+  <button onclick="goPage('linear')">Regressão Linear</button>
+  <button onclick="goPage('poly')">Regressão Polinomial</button>
+  <button onclick="goPage('tree')">Árvore de Decisão</button>
+  <button onclick="goPage('knn')">KNN Regressor</button>
+  <button onclick="goPage('rf')">Random Forest</button>
+  <button onclick="goPage('metricas')">Métricas de Avaliação</button>
+  <button onclick="goPage('comparativo')">Comparativo Geral</button>
+  <button onclick="goPage('pratica')">Código Prático</button>
+</nav>
+
+<!-- ==================== INTRO ==================== -->
+<div id="page-intro" class="page active">
+  <h2 class="section-title">O que é Regressão?</h2>
+  <p class="section-sub">Prever um valor numérico contínuo a partir de uma ou mais variáveis de entrada.</p>
+
+  <div class="two-col">
+    <div class="intuition-box">
+      <strong>Intuição central</strong>
+      <p style="margin-top:0.5rem; font-size:0.88rem; line-height:1.7; color:var(--text)">
+        Dado que você tem informações sobre um imóvel — área, número de quartos, localização — você quer estimar seu preço. Esse é um problema de <em>regressão</em>: as entradas são variáveis contínuas e a saída também é contínua.
+      </p>
+    </div>
+    <div class="intuition-box" style="background:linear-gradient(135deg,rgba(255,108,140,0.08),rgba(255,201,108,0.05));border-color:rgba(255,108,140,0.25)">
+      <strong style="color:var(--accent2)">Diferença de Classificação</strong>
+      <p style="margin-top:0.5rem; font-size:0.88rem; line-height:1.7; color:var(--text)">
+        Em <em>classificação</em> queremos saber a categoria (spam/não-spam, doença/saudável). Em <em>regressão</em> queremos o valor exato: quanto custa? quantos kg? qual temperatura?
+      </p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Exemplos do cotidiano</div>
+    <div class="three-col" style="gap:0.8rem; margin-top:0.5rem">
+      <div style="background:var(--surface2);border-radius:8px;padding:1rem;border:1px solid var(--border)">
+        <div style="font-size:1.6rem;margin-bottom:0.4rem">🏠</div>
+        <strong style="font-size:0.88rem">Preço de imóvel</strong>
+        <p style="font-size:0.78rem;color:var(--muted);margin-top:0.3rem">Área, quartos, bairro → preço em R$</p>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:1rem;border:1px solid var(--border)">
+        <div style="font-size:1.6rem;margin-bottom:0.4rem">🌡️</div>
+        <strong style="font-size:0.88rem">Temperatura amanhã</strong>
+        <p style="font-size:0.78rem;color:var(--muted);margin-top:0.3rem">Pressão, umidade, hora → graus Celsius</p>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:1rem;border:1px solid var(--border)">
+        <div style="font-size:1.6rem;margin-bottom:0.4rem">🚗</div>
+        <strong style="font-size:0.88rem">Consumo de combustível</strong>
+        <p style="font-size:0.78rem;color:var(--muted);margin-top:0.3rem">Peso, motor, velocidade → km/L</p>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:1rem;border:1px solid var(--border)">
+        <div style="font-size:1.6rem;margin-bottom:0.4rem">💊</div>
+        <strong style="font-size:0.88rem">Dose de medicamento</strong>
+        <p style="font-size:0.78rem;color:var(--muted);margin-top:0.3rem">Peso, idade, exames → mg por dia</p>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:1rem;border:1px solid var(--border)">
+        <div style="font-size:1.6rem;margin-bottom:0.4rem">📱</div>
+        <strong style="font-size:0.88rem">Engajamento em rede social</strong>
+        <p style="font-size:0.78rem;color:var(--muted);margin-top:0.3rem">Horário, formato, tema → nº de curtidas</p>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:1rem;border:1px solid var(--border)">
+        <div style="font-size:1.6rem;margin-bottom:0.4rem">🎓</div>
+        <strong style="font-size:0.88rem">Nota na prova</strong>
+        <p style="font-size:0.78rem;color:var(--muted);margin-top:0.3rem">Horas de estudo, frequência → nota</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Roteiro desta aula</div>
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Regressão Linear</h4><p>O modelo mais simples: linha reta ajustada aos dados. Base para entender tudo que vem depois.</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Regressão Polinomial</h4><p>E se a relação não for linear? Curvas podem se ajustar melhor — mas cuidado com overfitting!</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Árvore de Decisão</h4><p>Modelo baseado em regras: divide o espaço em regiões e prevê por média. Fácil de entender.</p></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><h4>KNN Regressor</h4><p>Prevê com base nos vizinhos mais próximos. Sem treinamento formal — busca direta nos dados.</p></div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-body"><h4>Random Forest</h4><p>Conjunto de árvores que votam juntas. Muito robusto e amplamente usado na prática.</p></div></div>
+    <div class="step"><div class="step-num">6</div><div class="step-body"><h4>Métricas</h4><p>Como medir se o modelo é bom? MAE, MSE, RMSE e R² na prática.</p></div></div>
+  </div>
+</div>
+
+<!-- ==================== REGRESSÃO LINEAR ==================== -->
+<div id="page-linear" class="page">
+  <h2 class="section-title">Regressão Linear (Múltipla)</h2>
+  <p class="section-sub">O modelo mais fundamental. Assume que a saída é uma <em>combinação linear</em> das features de entrada.</p>
+
+  <div class="intuition-box">
+    <strong>Intuição</strong>
+    <p style="margin-top:0.5rem;font-size:0.88rem;line-height:1.7;color:var(--text)">
+      Imagine que você quer prever o preço de uma pizza. Você percebe que cada centímetro extra no diâmetro adiciona um valor fixo, e cada ingrediente adicional também tem um custo fixo. A regressão linear aprende exatamente esses "pesos" — qual o valor de cada feature para a predição final.
+    </p>
+  </div>
+
+  <div class="big-formula">ŷ = w₀ + w₁·x₁ + w₂·x₂ + ... + wₙ·xₙ</div>
+
+  <div class="two-col">
+    <div>
+      <div class="card">
+        <div class="card-title">Visualização Interativa — 2 Features</div>
+        <label class="ctrl-label">Peso da feature x₁ (área): <span id="w1-val">2.0</span></label>
+        <input type="range" id="w1" min="-5" max="5" step="0.1" value="2.0">
+        <label class="ctrl-label">Peso da feature x₂ (quartos): <span id="w2-val">1.5</span></label>
+        <input type="range" id="w2" min="-5" max="5" step="0.1" value="1.5">
+        <label class="ctrl-label">Intercepto (w₀): <span id="w0-val">10</span></label>
+        <input type="range" id="w0" min="-20" max="50" step="1" value="10">
+        <div style="margin-top:0.8rem;font-size:0.82rem;color:var(--muted);">
+          Prevendo preço (em mil R$) com área e nº de quartos
+        </div>
+        <div id="linear-formula" style="margin-top:0.5rem;font-size:0.85rem;color:var(--accent3);font-family:monospace;"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Previsões com o modelo atual</div>
+        <div id="linear-preds" style="font-size:0.82rem;"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="height:350px;position:relative">
+        <div class="card-title">Dados reais vs. Previsões</div>
+        <div style="position:relative;height:280px">
+          <canvas id="linearChart" role="img" aria-label="Gráfico de dispersão mostrando dados reais versus previsões da regressão linear"></canvas>
+        </div>
+      </div>
+      <div class="metric-row" id="linear-metrics"></div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Quando usar</div>
+      <div class="good-box">✅ Relação aproximadamente linear entre features e alvo<br>✅ Features contínuas e bem escaladas<br>✅ Você precisa de interpretabilidade (saber o peso de cada feature)<br>✅ Baseline rápido para comparar outros modelos</div>
+      <div class="warn-box">⚠️ Péssimo para relações não-lineares<br>⚠️ Sensível a outliers<br>⚠️ Assume independência entre features</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Prós e Contras</div>
+      <table class="comparison-table">
+        <tr><th>Prós</th><th>Contras</th></tr>
+        <tr><td>Muito rápido de treinar</td><td>Assume linearidade</td></tr>
+        <tr><td>Interpretável</td><td>Sensível a outliers</td></tr>
+        <tr><td>Funciona bem com poucos dados</td><td>Baixo poder expressivo</td></tr>
+        <tr><td>Base teórica sólida</td><td>Requer normalização</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== POLINOMIAL ==================== -->
+<div id="page-poly" class="page">
+  <h2 class="section-title">Regressão Polinomial</h2>
+  <p class="section-sub">Uma extensão da regressão linear: cria novas features como x², x³... para capturar relações curvas.</p>
+
+  <div class="intuition-box">
+    <strong>Intuição</strong>
+    <p style="margin-top:0.5rem;font-size:0.88rem;line-height:1.7;color:var(--text)">
+      A regressão polinomial não é um algoritmo diferente — é uma <em>transformação das features</em>. Se você tem x₁, cria automaticamente x₁², x₁³, e depois roda uma regressão linear normal. É como dar ao modelo mais "vocabulário" para descrever curvas.
+    </p>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <div class="card">
+        <div class="card-title">Grau do Polinômio</div>
+        <label class="ctrl-label">Grau: <span id="poly-degree-val">2</span></label>
+        <input type="range" id="poly-degree" min="1" max="10" step="1" value="2">
+        <label class="ctrl-label">Ruído nos dados: <span id="poly-noise-val">0.5</span></label>
+        <input type="range" id="poly-noise" min="0" max="2" step="0.1" value="0.5">
+        <div id="poly-info" style="margin-top:0.8rem;font-size:0.82rem;color:var(--muted);"></div>
+        <div id="poly-warning" class="warn-box" style="display:none;margin-top:0.8rem;"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Features geradas pelo PolynomialFeatures</div>
+        <div id="poly-features" style="font-size:0.82rem;line-height:2;"></div>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="height:360px;position:relative">
+        <div class="card-title">Ajuste polinomial (1 feature)</div>
+        <div style="position:relative;height:290px">
+          <canvas id="polyChart" role="img" aria-label="Gráfico mostrando ajuste polinomial nos dados"></canvas>
+        </div>
+      </div>
+      <div class="metric-row" id="poly-metrics"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Underfitting vs Overfitting — conceito visual</div>
+    <div class="three-col">
+      <div style="text-align:center;padding:0.8rem;background:var(--surface2);border-radius:8px;border:1px solid rgba(255,108,140,0.3)">
+        <div style="font-size:2rem;margin-bottom:0.3rem">📉</div>
+        <strong style="color:var(--accent2);font-size:0.85rem">Underfitting (grau 1)</strong>
+        <p style="font-size:0.78rem;color:var(--muted);margin-top:0.4rem;line-height:1.5">Modelo muito simples. Não consegue capturar o padrão real dos dados.</p>
+      </div>
+      <div style="text-align:center;padding:0.8rem;background:var(--surface2);border-radius:8px;border:1px solid rgba(108,255,180,0.3)">
+        <div style="font-size:2rem;margin-bottom:0.3rem">✅</div>
+        <strong style="color:var(--accent3);font-size:0.85rem">Bom ajuste (grau 2–3)</strong>
+        <p style="font-size:0.78rem;color:var(--muted);margin-top:0.4rem;line-height:1.5">Captura o padrão sem decorar o ruído. Generaliza bem para novos dados.</p>
+      </div>
+      <div style="text-align:center;padding:0.8rem;background:var(--surface2);border-radius:8px;border:1px solid rgba(255,201,108,0.3)">
+        <div style="font-size:2rem;margin-bottom:0.3rem">📈</div>
+        <strong style="color:var(--accent4);font-size:0.85rem">Overfitting (grau 8+)</strong>
+        <p style="font-size:0.78rem;color:var(--muted);margin-top:0.4rem;line-height:1.5">Decorou até o ruído. Péssimo com dados novos. Cuidado!</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== ÁRVORE ==================== -->
+<div id="page-tree" class="page">
+  <h2 class="section-title">Árvore de Decisão para Regressão</h2>
+  <p class="section-sub">Divide o espaço de features em regiões e prevê a média da região onde o ponto cai.</p>
+
+  <div class="intuition-box">
+    <strong>Intuição</strong>
+    <p style="margin-top:0.5rem;font-size:0.88rem;line-height:1.7;color:var(--text)">
+      Imagine um guia de perguntas: "A área é maior que 80m²? Se sim, tem mais de 2 quartos? Se sim → prevejo R$400k." A árvore aprende automaticamente quais perguntas fazer e em qual ordem. É como um fluxograma que o algoritmo constrói sozinho a partir dos dados.
+    </p>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <div class="card">
+        <div class="card-title">Controles</div>
+        <label class="ctrl-label">Profundidade máxima: <span id="tree-depth-val">3</span></label>
+        <input type="range" id="tree-depth" min="1" max="8" step="1" value="3">
+        <label class="ctrl-label">Mínimo de amostras por folha: <span id="tree-min-val">5</span></label>
+        <input type="range" id="tree-min" min="1" max="20" step="1" value="5">
+        <div id="tree-info" style="margin-top:0.8rem;font-size:0.82rem;color:var(--muted);"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Como a árvore divide</div>
+        <p style="font-size:0.82rem;color:var(--muted);line-height:1.6;margin-bottom:0.8rem">Em cada nó, o algoritmo testa todos os possíveis cortes em todas as features e escolhe o que mais <em>reduz o MSE</em> médio das partições.</p>
+        <div style="background:var(--surface2);border-radius:8px;padding:0.8rem;border:1px solid var(--border)">
+          <div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.4rem">Exemplo de estrutura:</div>
+          <div style="font-family:monospace;font-size:0.78rem;line-height:2;color:var(--text)">
+            area &lt; 80?<br>
+            &nbsp;├── sim → quartos &lt; 2?<br>
+            &nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;├── sim → <span style="color:var(--accent3)">prevê 180k</span><br>
+            &nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;└── não → <span style="color:var(--accent3)">prevê 250k</span><br>
+            &nbsp;└── não → quartos &lt; 3?<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── sim → <span style="color:var(--accent3)">prevê 380k</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── não → <span style="color:var(--accent3)">prevê 520k</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="height:360px;position:relative">
+        <div class="card-title">Dados reais vs. previsões (1 feature)</div>
+        <div style="position:relative;height:290px">
+          <canvas id="treeChart" role="img" aria-label="Gráfico mostrando predições da árvore de decisão"></canvas>
+        </div>
+      </div>
+      <div class="metric-row" id="tree-metrics"></div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Quando usar</div>
+      <div class="good-box">✅ Dados com relações não-lineares e complexas<br>✅ Mix de features contínuas e categóricas<br>✅ Precisa de explicabilidade (mostrar a "regra")<br>✅ Não precisa normalizar os dados</div>
+      <div class="warn-box">⚠️ Tende a overfitting com profundidade alta<br>⚠️ Sensível a pequenas mudanças nos dados<br>⚠️ Previsão "em degraus" — não suave</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Parâmetros importantes</div>
+      <table class="comparison-table">
+        <tr><th>Parâmetro</th><th>O que controla</th><th>Sugestão</th></tr>
+        <tr><td><code style="color:var(--accent)">max_depth</code></td><td>Profundidade máxima</td><td>3 a 6</td></tr>
+        <tr><td><code style="color:var(--accent)">min_samples_leaf</code></td><td>Mín. amostras na folha</td><td>5 a 20</td></tr>
+        <tr><td><code style="color:var(--accent)">min_samples_split</code></td><td>Mín. para dividir nó</td><td>10 a 30</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== KNN ==================== -->
+<div id="page-knn" class="page">
+  <h2 class="section-title">KNN — K Nearest Neighbors (Regressor)</h2>
+  <p class="section-sub">Prevê a média dos K vizinhos mais próximos no espaço de features.</p>
+
+  <div class="intuition-box">
+    <strong>Intuição</strong>
+    <p style="margin-top:0.5rem;font-size:0.88rem;line-height:1.7;color:var(--text)">
+      Você quer saber o preço de um imóvel. Sua estratégia: encontrar os K imóveis mais parecidos (mesma área, mesmo nº de quartos) e calcular a média dos preços deles. Sem "aprendizado" formal — é busca pura. Por isso é chamado de <em>lazy learner</em>.
+    </p>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <div class="card">
+        <div class="card-title">Parâmetros</div>
+        <label class="ctrl-label">Número de vizinhos (K): <span id="knn-k-val">5</span></label>
+        <input type="range" id="knn-k" min="1" max="20" step="1" value="5">
+        <div style="margin-top:0.5rem;font-size:0.82rem;color:var(--muted)">
+          <strong style="color:var(--text)">K pequeno</strong>: modelo muito flexível, overfitting possível<br>
+          <strong style="color:var(--text)">K grande</strong>: modelo suavizado, pode underfit
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Como funciona passo a passo</div>
+        <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Recebe um novo ponto xₙₒᵥₒ</h4><p>Ainda não conhecemos seu valor y.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Calcula a distância</h4><p>Distância Euclidiana até todos os pontos do treino: √(Σ(xᵢ - xₙₒᵥₒ)²)</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Seleciona os K mais próximos</h4><p>Ordena as distâncias e pega os K menores.</p></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><h4>Calcula a média</h4><p>ŷ = média dos y dos K vizinhos selecionados.</p></div></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="height:360px;position:relative">
+        <div class="card-title">Predições do KNN (1 feature)</div>
+        <div style="position:relative;height:290px">
+          <canvas id="knnChart" role="img" aria-label="Gráfico mostrando predições do KNN regressor"></canvas>
+        </div>
+      </div>
+      <div class="metric-row" id="knn-metrics"></div>
+
+      <div class="warn-box" style="margin-top:0.8rem">
+        ⚠️ <strong>Importante:</strong> KNN é muito sensível à escala das features. Sempre normalize os dados antes (StandardScaler ou MinMaxScaler) — caso contrário, features com valores maiores dominam a distância!
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== RANDOM FOREST ==================== -->
+<div id="page-rf" class="page">
+  <h2 class="section-title">Random Forest (Floresta Aleatória)</h2>
+  <p class="section-sub">Um ensemble de árvores de decisão. Cada árvore vota e a média vira a previsão final.</p>
+
+  <div class="intuition-box">
+    <strong>Intuição</strong>
+    <p style="margin-top:0.5rem;font-size:0.88rem;line-height:1.7;color:var(--text)">
+      Imagine que você pede a opinião de 100 especialistas (árvores). Cada um foi treinado com dados ligeiramente diferentes e considera features diferentes. No fim, você faz a média das opiniões. Nenhum especialista isolado é perfeito, mas a média do grupo tende a ser muito boa. Esse princípio chama-se <em>bagging</em>.
+    </p>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <div class="card">
+        <div class="card-title">Parâmetros</div>
+        <label class="ctrl-label">Número de árvores: <span id="rf-trees-val">10</span></label>
+        <input type="range" id="rf-trees" min="1" max="50" step="1" value="10">
+        <label class="ctrl-label">Profundidade máxima por árvore: <span id="rf-depth-val">4</span></label>
+        <input type="range" id="rf-depth" min="1" max="8" step="1" value="4">
+        <div id="rf-info" style="margin-top:0.8rem;font-size:0.82rem;color:var(--muted)"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Diferença entre Árvore e Floresta</div>
+        <table class="comparison-table">
+          <tr><th>Aspecto</th><th>Árvore única</th><th>Random Forest</th></tr>
+          <tr><td>Estabilidade</td><td style="color:var(--accent2)">Baixa</td><td style="color:var(--accent3)">Alta</td></tr>
+          <tr><td>Overfitting</td><td style="color:var(--accent2)">Frequente</td><td style="color:var(--accent3)">Menos comum</td></tr>
+          <tr><td>Interpretável</td><td style="color:var(--accent3)">Sim</td><td style="color:var(--accent2)">Mais difícil</td></tr>
+          <tr><td>Velocidade</td><td style="color:var(--accent3)">Rápida</td><td style="color:var(--accent2)">Mais lenta</td></tr>
+          <tr><td>Precisão típica</td><td style="color:var(--accent2)">Mediana</td><td style="color:var(--accent3)">Alta</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="height:360px;position:relative">
+        <div class="card-title">Comparação: 1 árvore vs. floresta</div>
+        <div style="position:relative;height:290px">
+          <canvas id="rfChart" role="img" aria-label="Gráfico comparando predições de uma árvore e de uma Random Forest"></canvas>
+        </div>
+      </div>
+      <div class="metric-row" id="rf-metrics"></div>
+      <div class="good-box" style="margin-top:0.8rem">
+        💡 <strong>Regra prática:</strong> Random Forest é frequentemente um excelente ponto de partida para problemas reais. É robusto, não precisa de muita tunagem e costuma dar bons resultados quase "de caixa".
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MÉTRICAS ==================== -->
+<div id="page-metricas" class="page">
+  <h2 class="section-title">Métricas de Avaliação</h2>
+  <p class="section-sub">Como medir se um modelo de regressão é bom? Cada métrica conta uma história diferente.</p>
+
+  <div class="three-col" style="margin-bottom:1.2rem">
+    <div class="intuition-box" style="cursor:pointer" onclick="showMetric('mae')">
+      <strong>MAE</strong>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:0.2rem">Mean Absolute Error</div>
+      <div class="big-formula" style="font-size:0.95rem;padding:0.6rem">MAE = (1/n) Σ|yᵢ - ŷᵢ|</div>
+      <p style="font-size:0.78rem;color:var(--text);margin-top:0.3rem;line-height:1.5">Média dos erros absolutos. Mesma unidade da saída. Intuitivo e robusto a outliers.</p>
+    </div>
+    <div class="intuition-box" style="cursor:pointer;background:linear-gradient(135deg,rgba(255,108,140,0.08),rgba(255,201,108,0.05));border-color:rgba(255,108,140,0.25)" onclick="showMetric('rmse')">
+      <strong style="color:var(--accent2)">RMSE</strong>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:0.2rem">Root Mean Squared Error</div>
+      <div class="big-formula" style="font-size:0.95rem;padding:0.6rem;color:var(--accent2)">RMSE = √((1/n) Σ(yᵢ-ŷᵢ)²)</div>
+      <p style="font-size:0.78rem;color:var(--text);margin-top:0.3rem;line-height:1.5">Penaliza erros grandes mais. Mesma unidade do MAE, mas mais sensível a outliers.</p>
+    </div>
+    <div class="intuition-box" style="cursor:pointer;background:linear-gradient(135deg,rgba(108,255,180,0.08),rgba(108,140,255,0.05));border-color:rgba(108,255,180,0.25)" onclick="showMetric('r2')">
+      <strong style="color:var(--accent3)">R²</strong>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:0.2rem">Coeficiente de Determinação</div>
+      <div class="big-formula" style="font-size:0.95rem;padding:0.6rem;color:var(--accent3)">R² = 1 - SS_res/SS_tot</div>
+      <p style="font-size:0.78rem;color:var(--text);margin-top:0.3rem;line-height:1.5">Proporção da variância explicada. De 0 (péssimo) a 1 (perfeito). Comparável entre datasets.</p>
+    </div>
+  </div>
+
+  <div class="card" id="metric-detail">
+    <div class="card-title" id="metric-detail-title">Simulação Interativa</div>
+    <div class="two-col">
+      <div>
+        <label class="ctrl-label">Espalhamento dos erros: <span id="err-spread-val">1.5</span></label>
+        <input type="range" id="err-spread" min="0.1" max="5" step="0.1" value="1.5">
+        <label class="ctrl-label">Intensidade de outliers: <span id="outlier-val">0</span></label>
+        <input type="range" id="outlier-intensity" min="0" max="10" step="1" value="0">
+        <div class="metric-row" id="metric-sim-values" style="margin-top:1rem"></div>
+        <div id="metric-explanation" style="margin-top:1rem;font-size:0.82rem;color:var(--muted);line-height:1.7"></div>
+      </div>
+      <div>
+        <div style="position:relative;height:260px">
+          <canvas id="metricChart" role="img" aria-label="Gráfico mostrando resíduos do modelo"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Resumo comparativo das métricas</div>
+    <table class="comparison-table">
+      <tr><th>Métrica</th><th>Unidade</th><th>Sensível a outliers?</th><th>Quando usar</th></tr>
+      <tr><td><span class="badge badge-blue">MAE</span></td><td>Mesma do alvo</td><td>Pouco</td><td>Interpretação fácil, erros grandes não são críticos</td></tr>
+      <tr><td><span class="badge badge-red">MSE</span></td><td>Unidade²</td><td>Muito</td><td>Otimização matemática (usado internamente nos modelos)</td></tr>
+      <tr><td><span class="badge badge-red">RMSE</span></td><td>Mesma do alvo</td><td>Muito</td><td>Erros grandes são graves (ex: previsão médica)</td></tr>
+      <tr><td><span class="badge badge-green">R²</span></td><td>Adimensional</td><td>Moderado</td><td>Comparar modelos em diferentes datasets</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ==================== COMPARATIVO ==================== -->
+<div id="page-comparativo" class="page">
+  <h2 class="section-title">Comparativo Geral</h2>
+  <p class="section-sub">Quando usar cada algoritmo? Resumo prático para tomada de decisão.</p>
+
+  <div class="card">
+    <div class="card-title">Comparação lado a lado — mesmo dataset</div>
+    <div style="position:relative;height:340px">
+      <canvas id="compareChart" role="img" aria-label="Gráfico comparando predições dos diferentes algoritmos de regressão"></canvas>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:1.2rem">
+    <div class="card-title">Métricas comparativas (dataset simulado)</div>
+    <div id="compare-metrics" style="overflow-x:auto"></div>
+  </div>
+
+  <div class="card" style="margin-top:1.2rem">
+    <div class="card-title">Guia rápido de escolha</div>
+    <table class="comparison-table">
+      <tr>
+        <th>Algoritmo</th>
+        <th>Dados pequenos</th>
+        <th>Dados grandes</th>
+        <th>Relação não-linear</th>
+        <th>Interpretabilidade</th>
+        <th>Sem normalizar</th>
+      </tr>
+      <tr>
+        <td><span class="badge badge-blue">Linear</span></td>
+        <td style="color:var(--accent3)">✅</td><td style="color:var(--accent3)">✅</td>
+        <td style="color:var(--accent2)">❌</td><td style="color:var(--accent3)">✅✅</td>
+        <td style="color:var(--accent2)">❌</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-blue">Polinomial</span></td>
+        <td style="color:var(--accent3)">✅</td><td style="color:var(--accent4)">⚠️</td>
+        <td style="color:var(--accent3)">✅</td><td style="color:var(--accent4)">⚠️</td>
+        <td style="color:var(--accent2)">❌</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-amber">Árvore</span></td>
+        <td style="color:var(--accent3)">✅</td><td style="color:var(--accent4)">⚠️</td>
+        <td style="color:var(--accent3)">✅</td><td style="color:var(--accent3)">✅</td>
+        <td style="color:var(--accent3)">✅</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-red">KNN</span></td>
+        <td style="color:var(--accent3)">✅</td><td style="color:var(--accent2)">❌</td>
+        <td style="color:var(--accent3)">✅</td><td style="color:var(--accent4)">⚠️</td>
+        <td style="color:var(--accent2)">❌ (precisa norm.)</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-green">Random Forest</span></td>
+        <td style="color:var(--accent4)">⚠️</td><td style="color:var(--accent3)">✅</td>
+        <td style="color:var(--accent3)">✅✅</td><td style="color:var(--accent2)">❌</td>
+        <td style="color:var(--accent3)">✅</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- ==================== CÓDIGO PRÁTICO ==================== -->
+<div id="page-pratica" class="page">
+  <h2 class="section-title">Código Prático com scikit-learn</h2>
+  <p class="section-sub">Todos os algoritmos seguem o mesmo padrão: <code style="color:var(--accent)">.fit()</code> e <code style="color:var(--accent)">.predict()</code>.</p>
+
+  <div class="tabs-inner" id="code-tabs">
+    <button class="tab-btn on" onclick="showCodeTab('prep')">Preparação dos dados</button>
+    <button class="tab-btn" onclick="showCodeTab('linear')">Regressão Linear</button>
+    <button class="tab-btn" onclick="showCodeTab('poly2')">Polinomial</button>
+    <button class="tab-btn" onclick="showCodeTab('tree2')">Árvore</button>
+    <button class="tab-btn" onclick="showCodeTab('knn2')">KNN</button>
+    <button class="tab-btn" onclick="showCodeTab('rf2')">Random Forest</button>
+    <button class="tab-btn" onclick="showCodeTab('eval')">Avaliação</button>
+    <button class="tab-btn" onclick="showCodeTab('pipeline')">Pipeline completo</button>
+  </div>
+
+  <div id="tab-prep" class="tab-content on card">
+<pre class="code-block"><span class="kw">import</span> pandas <span class="kw">as</span> pd
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+<span class="kw">from</span> sklearn.model_selection <span class="kw">import</span> train_test_split
+<span class="kw">from</span> sklearn.preprocessing <span class="kw">import</span> StandardScaler
+
+<span class="cm"># Carregando um dataset de exemplo (imóveis)</span>
+df = pd.<span class="fn">read_csv</span>(<span class="str">'imoveis.csv'</span>)
+
+<span class="cm"># Features (variáveis de entrada) — dimensionalidade >= 2</span>
+X = df[[<span class="str">'area'</span>, <span class="str">'quartos'</span>, <span class="str">'distancia_centro'</span>]]
+y = df[<span class="str">'preco'</span>]  <span class="cm"># Variável alvo</span>
+
+<span class="cm"># Divisão treino/teste (80% treino, 20% teste)</span>
+X_train, X_test, y_train, y_test = <span class="fn">train_test_split</span>(
+    X, y, test_size=<span class="num">0.2</span>, random_state=<span class="num">42</span>
+)
+
+<span class="cm"># Normalização (importante para Linear e KNN)</span>
+scaler = <span class="fn">StandardScaler</span>()
+X_train_sc = scaler.<span class="fn">fit_transform</span>(X_train)  <span class="cm"># aprende + transforma</span>
+X_test_sc  = scaler.<span class="fn">transform</span>(X_test)       <span class="cm"># apenas transforma (sem vazar o teste!)</span>
+
+<span class="fn">print</span>(f<span class="str">"Treino: {X_train.shape[0]} amostras, Teste: {X_test.shape[0]} amostras"</span>)</pre>
+  </div>
+
+  <div id="tab-linear" class="tab-content card">
+<pre class="code-block"><span class="kw">from</span> sklearn.linear_model <span class="kw">import</span> LinearRegression
+
+<span class="cm"># Criar e treinar o modelo</span>
+modelo = <span class="fn">LinearRegression</span>()
+modelo.<span class="fn">fit</span>(X_train_sc, y_train)
+
+<span class="cm"># Ver os coeficientes aprendidos</span>
+<span class="fn">print</span>(<span class="str">"Intercepto:"</span>, modelo.intercept_)
+<span class="fn">print</span>(<span class="str">"Coeficientes:"</span>, modelo.coef_)
+
+<span class="cm"># Prever</span>
+y_pred = modelo.<span class="fn">predict</span>(X_test_sc)
+
+<span class="cm"># Interpretação: coeficiente[0] = efeito da área no preço</span>
+<span class="cm"># Ex: coef[0] = 15 significa "cada unidade de área aumenta 15 no preço"</span></pre>
+  </div>
+
+  <div id="tab-poly2" class="tab-content card">
+<pre class="code-block"><span class="kw">from</span> sklearn.preprocessing <span class="kw">import</span> PolynomialFeatures
+<span class="kw">from</span> sklearn.linear_model <span class="kw">import</span> LinearRegression
+
+<span class="cm"># Criar features polinomiais de grau 2</span>
+<span class="cm"># Ex: [area, quartos] → [1, area, quartos, area², area·quartos, quartos²]</span>
+poly = <span class="fn">PolynomialFeatures</span>(degree=<span class="num">2</span>, include_bias=<span class="kw">False</span>)
+X_train_poly = poly.<span class="fn">fit_transform</span>(X_train_sc)
+X_test_poly  = poly.<span class="fn">transform</span>(X_test_sc)
+
+<span class="fn">print</span>(<span class="str">"Features originais:"</span>, X_train_sc.shape[<span class="num">1</span>])
+<span class="fn">print</span>(<span class="str">"Features pós-poly:"</span>, X_train_poly.shape[<span class="num">1</span>])
+<span class="fn">print</span>(<span class="str">"Nomes:"</span>, poly.<span class="fn">get_feature_names_out</span>())
+
+<span class="cm"># Regressão linear nas features polinomiais</span>
+modelo_poly = <span class="fn">LinearRegression</span>()
+modelo_poly.<span class="fn">fit</span>(X_train_poly, y_train)
+y_pred = modelo_poly.<span class="fn">predict</span>(X_test_poly)</pre>
+  </div>
+
+  <div id="tab-tree2" class="tab-content card">
+<pre class="code-block"><span class="kw">from</span> sklearn.tree <span class="kw">import</span> DecisionTreeRegressor, export_text
+
+<span class="cm"># Árvore não precisa de normalização!</span>
+modelo_tree = <span class="fn">DecisionTreeRegressor</span>(
+    max_depth=<span class="num">4</span>,          <span class="cm"># profundidade máxima</span>
+    min_samples_leaf=<span class="num">10</span>   <span class="cm"># mínimo de amostras na folha</span>
+)
+modelo_tree.<span class="fn">fit</span>(X_train, y_train)  <span class="cm"># sem normalização</span>
+
+<span class="cm"># Visualizar a árvore em texto</span>
+regras = <span class="fn">export_text</span>(modelo_tree,
+                     feature_names=[<span class="str">'area'</span>, <span class="str">'quartos'</span>, <span class="str">'distancia'</span>])
+<span class="fn">print</span>(regras)
+
+<span class="cm"># Importância das features</span>
+<span class="kw">for</span> feat, imp <span class="kw">in</span> <span class="fn">zip</span>(X.columns, modelo_tree.feature_importances_):
+    <span class="fn">print</span>(f<span class="str">"{feat}: {imp:.3f}"</span>)
+
+y_pred = modelo_tree.<span class="fn">predict</span>(X_test)</pre>
+  </div>
+
+  <div id="tab-knn2" class="tab-content card">
+<pre class="code-block"><span class="kw">from</span> sklearn.neighbors <span class="kw">import</span> KNeighborsRegressor
+
+<span class="cm"># KNN PRECISA de normalização — distâncias dominadas por features grandes!</span>
+modelo_knn = <span class="fn">KNeighborsRegressor</span>(
+    n_neighbors=<span class="num">7</span>,         <span class="cm"># número de vizinhos</span>
+    weights=<span class="str">'distance'</span>    <span class="cm"># vizinhos mais próximos pesam mais</span>
+)
+modelo_knn.<span class="fn">fit</span>(X_train_sc, y_train)
+
+<span class="cm"># Prever e ver distâncias dos vizinhos</span>
+y_pred = modelo_knn.<span class="fn">predict</span>(X_test_sc)
+
+<span class="cm"># Para um ponto específico, ver os K vizinhos</span>
+dists, indices = modelo_knn.<span class="fn">kneighbors</span>(X_test_sc[<span class="num">0</span>:1])
+<span class="fn">print</span>(<span class="str">"Distâncias dos vizinhos:"</span>, dists)
+<span class="fn">print</span>(<span class="str">"Índices dos vizinhos:"</span>, indices)</pre>
+  </div>
+
+  <div id="tab-rf2" class="tab-content card">
+<pre class="code-block"><span class="kw">from</span> sklearn.ensemble <span class="kw">import</span> RandomForestRegressor
+
+<span class="cm"># Random Forest — robusto, geralmente bom resultado direto</span>
+modelo_rf = <span class="fn">RandomForestRegressor</span>(
+    n_estimators=<span class="num">100</span>,    <span class="cm"># número de árvores</span>
+    max_depth=<span class="num">6</span>,          <span class="cm"># profundidade por árvore</span>
+    random_state=<span class="num">42</span>      <span class="cm"># reprodutibilidade</span>
+)
+modelo_rf.<span class="fn">fit</span>(X_train, y_train)  <span class="cm"># sem normalização</span>
+
+<span class="cm"># Importância das features</span>
+importancias = pd.<span class="fn">Series</span>(
+    modelo_rf.feature_importances_,
+    index=X.columns
+).<span class="fn">sort_values</span>(ascending=<span class="kw">False</span>)
+<span class="fn">print</span>(importancias)
+
+y_pred = modelo_rf.<span class="fn">predict</span>(X_test)</pre>
+  </div>
+
+  <div id="tab-eval" class="tab-content card">
+<pre class="code-block"><span class="kw">from</span> sklearn.metrics <span class="kw">import</span> mean_absolute_error, mean_squared_error, r2_score
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="cm"># Calcular métricas (funciona igual para qualquer modelo)</span>
+mae  = <span class="fn">mean_absolute_error</span>(y_test, y_pred)
+mse  = <span class="fn">mean_squared_error</span>(y_test, y_pred)
+rmse = np.<span class="fn">sqrt</span>(mse)
+r2   = <span class="fn">r2_score</span>(y_test, y_pred)
+
+<span class="fn">print</span>(f<span class="str">"MAE  = {mae:.2f}"</span>)   <span class="cm"># erro médio absoluto</span>
+<span class="fn">print</span>(f<span class="str">"RMSE = {rmse:.2f}"</span>)  <span class="cm"># penaliza erros grandes</span>
+<span class="fn">print</span>(f<span class="str">"R²   = {r2:.4f}"</span>)   <span class="cm"># quanto o modelo explica (0 a 1)</span>
+
+<span class="cm"># Visualizar resíduos</span>
+<span class="kw">import</span> matplotlib.pyplot <span class="kw">as</span> plt
+residuos = y_test - y_pred
+plt.<span class="fn">scatter</span>(y_pred, residuos, alpha=<span class="num">0.5</span>)
+plt.<span class="fn">axhline</span>(<span class="num">0</span>, color=<span class="str">'red'</span>, linestyle=<span class="str">'--'</span>)
+plt.<span class="fn">xlabel</span>(<span class="str">"Previsão"</span>); plt.<span class="fn">ylabel</span>(<span class="str">"Resíduo"</span>)
+plt.<span class="fn">title</span>(<span class="str">"Análise de Resíduos"</span>)
+plt.<span class="fn">show</span>()</pre>
+  </div>
+
+  <div id="tab-pipeline" class="tab-content card">
+<pre class="code-block"><span class="kw">from</span> sklearn.pipeline <span class="kw">import</span> Pipeline
+<span class="kw">from</span> sklearn.preprocessing <span class="kw">import</span> StandardScaler
+<span class="kw">from</span> sklearn.ensemble <span class="kw">import</span> RandomForestRegressor
+<span class="kw">from</span> sklearn.model_selection <span class="kw">import</span> cross_val_score
+<span class="kw">from</span> sklearn.metrics <span class="kw">import</span> r2_score
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="cm"># Pipeline integra pré-processamento + modelo em um objeto só</span>
+<span class="cm"># Garante que o scaler só aprende nos dados de treino</span>
+pipe = <span class="fn">Pipeline</span>([
+    (<span class="str">'scaler'</span>, <span class="fn">StandardScaler</span>()),
+    (<span class="str">'modelo'</span>, <span class="fn">RandomForestRegressor</span>(n_estimators=<span class="num">100</span>, random_state=<span class="num">42</span>))
+])
+
+<span class="cm"># Validação cruzada (5 folds) — avaliação mais confiável</span>
+scores = <span class="fn">cross_val_score</span>(pipe, X, y, cv=<span class="num">5</span>, scoring=<span class="str">'r2'</span>)
+<span class="fn">print</span>(f<span class="str">"R² por fold: {scores.round(3)}"</span>)
+<span class="fn">print</span>(f<span class="str">"R² médio: {scores.mean():.3f} ± {scores.std():.3f}"</span>)
+
+<span class="cm"># Treinar com todos os dados e salvar</span>
+pipe.<span class="fn">fit</span>(X_train, y_train)
+y_pred = pipe.<span class="fn">predict</span>(X_test)
+<span class="fn">print</span>(f<span class="str">"R² no teste: {r2_score(y_test, y_pred):.3f}"</span>)
+
+<span class="cm"># Salvar o modelo</span>
+<span class="kw">import</span> joblib
+joblib.<span class="fn">dump</span>(pipe, <span class="str">'meu_modelo.pkl'</span>)
+<span class="cm"># Carregar depois: modelo = joblib.load('meu_modelo.pkl')</span></pre>
+  </div>
+</div>
+
+<script>
+function goPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  event.target.classList.add('active');
+  setTimeout(() => { initPage(id); }, 50);
+}
+
+function showCodeTab(id) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('on'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('on'));
+  document.getElementById('tab-' + id).classList.add('on');
+  event.target.classList.add('on');
+}
+
+function showMetric(m) {}
+
+const seeded = (seed) => {
+  let s = seed;
+  return () => { s = (s * 16807 + 0) % 2147483647; return (s - 1) / 2147483646; };
+};
+
+function genData(n, fn, noise, seed=42) {
+  const rng = seeded(seed);
+  const xs = Array.from({length:n}, (_,i) => -3 + 6*i/(n-1));
+  const ys = xs.map(x => fn(x) + noise * (rng() * 2 - 1));
+  return {xs, ys};
+}
+
+let charts = {};
+
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); charts[id] = null; }
+}
+
+function calcMetrics(ys, preds) {
+  const n = ys.length;
+  const mae = ys.reduce((s,y,i) => s + Math.abs(y - preds[i]), 0) / n;
+  const mse = ys.reduce((s,y,i) => s + (y-preds[i])**2, 0) / n;
+  const rmse = Math.sqrt(mse);
+  const ymean = ys.reduce((s,y) => s+y, 0) / n;
+  const ssTot = ys.reduce((s,y) => s + (y-ymean)**2, 0);
+  const ssRes = ys.reduce((s,y,i) => s + (y-preds[i])**2, 0);
+  const r2 = 1 - ssRes/ssTot;
+  return {mae, rmse, r2};
+}
+
+function renderMetrics(containerId, metrics) {
+  const c = document.getElementById(containerId);
+  if (!c) return;
+  c.innerHTML = `
+    <div class="metric"><div class="metric-name">MAE</div><div class="metric-val">${metrics.mae.toFixed(2)}</div></div>
+    <div class="metric"><div class="metric-name">RMSE</div><div class="metric-val" style="color:var(--accent2)">${metrics.rmse.toFixed(2)}</div></div>
+    <div class="metric"><div class="metric-name">R²</div><div class="metric-val" style="color:var(--accent4)">${metrics.r2.toFixed(3)}</div></div>
+  `;
+}
+
+// ---- Linear Page ----
+function initLinear() {
+  const w0El = document.getElementById('w0');
+  const w1El = document.getElementById('w1');
+  const w2El = document.getElementById('w2');
+  const samples = [
+    {x1:50,x2:1,y:115},{x1:60,x2:2,y:145},{x1:75,x2:2,y:175},{x1:80,x2:3,y:210},
+    {x1:90,x2:3,y:230},{x1:100,x2:4,y:270},{x1:110,x2:4,y:295},{x1:120,x2:4,y:330},
+    {x1:130,x2:5,y:380},{x1:140,x2:5,y:400},{x1:70,x2:2,y:165},{x1:85,x2:3,y:220}
+  ];
+  function updateLinear() {
+    const w0 = parseFloat(w0El.value);
+    const w1 = parseFloat(w1El.value);
+    const w2 = parseFloat(w2El.value);
+    document.getElementById('w0-val').textContent = w0;
+    document.getElementById('w1-val').textContent = w1.toFixed(1);
+    document.getElementById('w2-val').textContent = w2.toFixed(1);
+    document.getElementById('linear-formula').textContent =
+      `ŷ = ${w0} + ${w1.toFixed(1)}·área + ${w2.toFixed(1)}·quartos`;
+    const preds = samples.map(s => w0 + w1*(s.x1/10) + w2*s.x2*5);
+    const metrics = calcMetrics(samples.map(s=>s.y), preds);
+    renderMetrics('linear-metrics', metrics);
+    const predsDiv = document.getElementById('linear-preds');
+    predsDiv.innerHTML = samples.slice(0,5).map((s,i) =>
+      `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:0.8rem">
+        <span style="color:var(--muted)">${s.x1}m² / ${s.x2} qto</span>
+        <span>Real: <strong style="color:var(--accent3)">R$${s.y}k</strong> → Prev: <strong style="color:var(--accent)">${preds[i].toFixed(0)}k</strong></span>
+      </div>`
+    ).join('');
+    destroyChart('linear');
+    const ctx = document.getElementById('linearChart').getContext('2d');
+    charts['linear'] = new Chart(ctx, {
+      type:'scatter',
+      data:{
+        datasets:[
+          {label:'Real',data:samples.map(s=>({x:s.y,y:s.y})),backgroundColor:'rgba(108,255,180,0.7)',pointRadius:5},
+          {label:'Previsto',data:samples.map((s,i)=>({x:s.y,y:preds[i]})),backgroundColor:'rgba(108,140,255,0.8)',pointRadius:5},
+          {label:'Perfeito',data:[{x:100,y:100},{x:420,y:420}],type:'line',borderColor:'rgba(255,255,255,0.2)',borderDash:[4,4],pointRadius:0,fill:false}
+        ]
+      },
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{
+          x:{title:{display:true,text:'Valor Real (R$k)',color:'#7b82a8'},ticks:{color:'#7b82a8'},grid:{color:'rgba(255,255,255,0.05)'}},
+          y:{title:{display:true,text:'Valor Previsto (R$k)',color:'#7b82a8'},ticks:{color:'#7b82a8'},grid:{color:'rgba(255,255,255,0.05)'}}
+        }
+      }
+    });
+  }
+  w0El.addEventListener('input', updateLinear);
+  w1El.addEventListener('input', updateLinear);
+  w2El.addEventListener('input', updateLinear);
+  updateLinear();
+}
+
+// ---- Poly Page ----
+function fitPoly(xs, ys, degree) {
+  const n = xs.length;
+  const mat = xs.map(x => Array.from({length:degree+1},(_,d) => Math.pow(x,d)));
+  const A = mat; const b = ys;
+  const AT = A[0].map((_,j) => A.map(r=>r[j]));
+  const ATA = AT.map(row => AT[0].map((_,k) => row.reduce((s,_,i)=>s+row[i]*AT[i][k],0)));
+  const ATb = AT.map(row => row.reduce((s,v,i)=>s+v*b[i],0));
+  // small system - Gaussian elimination
+  const aug = ATA.map((row,i) => [...row, ATb[i]]);
+  const nd = degree+1;
+  for(let col=0;col<nd;col++){
+    let maxR=col; for(let r=col+1;r<nd;r++) if(Math.abs(aug[r][col])>Math.abs(aug[maxR][col])) maxR=r;
+    [aug[col],aug[maxR]]=[aug[maxR],aug[col]];
+    for(let r=0;r<nd;r++){
+      if(r===col) continue;
+      const f=aug[r][col]/aug[col][col];
+      for(let c=col;c<=nd;c++) aug[r][c]-=f*aug[col][c];
+    }
+  }
+  return aug.map((row,i)=>row[nd]/row[i]);
+}
+
+function polyPredict(coeffs, x) {
+  return coeffs.reduce((s,c,d)=>s+c*Math.pow(x,d),0);
+}
+
+function initPoly() {
+  const degEl = document.getElementById('poly-degree');
+  const noiseEl = document.getElementById('poly-noise');
+  const rng0 = seeded(7);
+  const xsTrain = Array.from({length:20},(_,i)=>-2.5+5*i/19);
+  function updatePoly() {
+    const deg = parseInt(degEl.value);
+    const noise = parseFloat(noiseEl.value);
+    document.getElementById('poly-degree-val').textContent = deg;
+    document.getElementById('poly-noise-val').textContent = noise.toFixed(1);
+    const rng = seeded(7);
+    const ysTrain = xsTrain.map(x => 0.5*x*x - x + 1 + noise*(rng()*2-1));
+    const xsLine = Array.from({length:80},(_,i)=>-3+6*i/79);
+    let coeffs;
+    try { coeffs = fitPoly(xsTrain, ysTrain, Math.min(deg, 10)); } catch(e) { return; }
+    const predsLine = xsLine.map(x=>polyPredict(coeffs,x));
+    const predsTrain = xsTrain.map(x=>polyPredict(coeffs,x));
+    const metrics = calcMetrics(ysTrain, predsTrain);
+    renderMetrics('poly-metrics', metrics);
+    const warn = document.getElementById('poly-warning');
+    if(deg >= 7) {
+      warn.style.display='block';
+      warn.innerHTML='⚠️ Grau muito alto! O modelo está sofrendo <strong>overfitting</strong> — decorou os dados de treino mas vai errar muito em dados novos.';
+    } else { warn.style.display='none'; }
+    const infoDiv = document.getElementById('poly-info');
+    const nFeat = deg > 1 ? `Com ${deg} features originais → ${Math.round(Math.pow(deg+1,1.5))} features geradas` : '1 feature original → 1 feature (linear)';
+    infoDiv.innerHTML = `Grau ${deg}: ${nFeat}`;
+    const featDiv = document.getElementById('poly-features');
+    const names = ['x'];
+    for(let d=2;d<=Math.min(deg,4);d++) names.push(`x^${d}`);
+    if(deg > 4) names.push('...');
+    featDiv.innerHTML = names.map(n =>
+      `<span class="badge badge-blue" style="margin:2px">${n}</span>`
+    ).join('');
+    destroyChart('poly');
+    const ctx = document.getElementById('polyChart').getContext('2d');
+    charts['poly'] = new Chart(ctx, {
+      data:{
+        datasets:[
+          {type:'scatter',label:'Dados',data:xsTrain.map((x,i)=>({x,y:ysTrain[i]})),backgroundColor:'rgba(108,255,180,0.7)',pointRadius:5},
+          {type:'line',label:'Modelo',data:xsLine.map((x,i)=>({x,y:predsLine[i]})),borderColor: deg>=7?'#ff6c8c':deg>=4?'#ffc96c':'#6c8cff',borderWidth:2,pointRadius:0,fill:false,tension:0.1}
+        ]
+      },
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{
+          x:{ticks:{color:'#7b82a8'},grid:{color:'rgba(255,255,255,0.05)'}},
+          y:{ticks:{color:'#7b82a8'},grid:{color:'rgba(255,255,255,0.05)'},min:-4,max:8}
+        }
+      }
+    });
+  }
+  degEl.addEventListener('input', updatePoly);
+  noiseEl.addEventListener('input', updatePoly);
+  updatePoly();
+}
+
+// ---- Tree Page ----
+function dtPredict(x, depth, minLeaf, xs, ys) {
+  if(depth===0 || xs.length<=minLeaf) return ys.reduce((s,v)=>s+v,0)/ys.length;
+  let bestThresh = null, bestMSE = Infinity;
+  for(let i=0;i<xs.length-1;i++){
+    const t = (xs[i]+xs[i+1])/2;
+    const lIdx = xs.map((_,j)=>j).filter(j=>xs[j]<t);
+    const rIdx = xs.map((_,j)=>j).filter(j=>xs[j]>=t);
+    if(lIdx.length<minLeaf||rIdx.length<minLeaf) continue;
+    const mean = arr => arr.reduce((s,v)=>s+v,0)/arr.length;
+    const mseArr = (idx,arr) => { const m=mean(idx.map(j=>arr[j])); return idx.reduce((s,j)=>s+(arr[j]-m)**2,0)/idx.length; };
+    const mse = mseArr(lIdx,ys)*lIdx.length/ys.length + mseArr(rIdx,ys)*rIdx.length/ys.length;
+    if(mse<bestMSE){bestMSE=mse;bestThresh=t;}
+  }
+  if(bestThresh===null) return ys.reduce((s,v)=>s+v,0)/ys.length;
+  const lIdx=[],rIdx=[];
+  xs.forEach((_,j)=>{if(xs[j]<bestThresh)lIdx.push(j);else rIdx.push(j);});
+  if(x<bestThresh) return dtPredict(x,depth-1,minLeaf,lIdx.map(j=>xs[j]),lIdx.map(j=>ys[j]));
+  return dtPredict(x,depth-1,minLeaf,rIdx.map(j=>xs[j]),rIdx.map(j=>ys[j]));
+}
+
+function initTree() {
+  const depthEl = document.getElementById('tree-depth');
+  const minEl = document.getElementById('tree-min');
+  const rng = seeded(13);
+  const xsTrain = Array.from({length:30},(_,i)=>-3+6*i/29);
+  const ysTrain = xsTrain.map(x=>Math.sin(x)*3 + 0.8*(rng()*2-1));
+  function updateTree() {
+    const depth = parseInt(depthEl.value);
+    const minLeaf = parseInt(minEl.value);
+    document.getElementById('tree-depth-val').textContent = depth;
+    document.getElementById('tree-min-val').textContent = minLeaf;
+    const infoDiv = document.getElementById('tree-info');
+    const maxNodes = Math.pow(2,depth)-1;
+    infoDiv.textContent = `Profundidade ${depth} → até ${maxNodes} nós | Folhas mín: ${minLeaf} amostras`;
+    const xsLine = Array.from({length:100},(_,i)=>-3+6*i/99);
+    const predsLine = xsLine.map(x=>dtPredict(x,depth,minLeaf,xsTrain,ysTrain));
+    const predsTrain = xsTrain.map(x=>dtPredict(x,depth,minLeaf,xsTrain,ysTrain));
+    const metrics = calcMetrics(ysTrain,predsTrain);
+    renderMetrics('tree-metrics',metrics);
+    destroyChart('tree');
+    const ctx = document.getElementById('treeChart').getContext('2d');
+    charts['tree'] = new Chart(ctx, {
+      data:{datasets:[
+        {type:'scatter',label:'Dados',data:xsTrain.map((x,i)=>({x,y:ysTrain[i]})),backgroundColor:'rgba(108,255,180,0.7)',pointRadius:5},
+        {type:'line',label:'Árvore',data:xsLine.map((x,i)=>({x,y:predsLine[i]})),borderColor:'#ffc96c',borderWidth:2,pointRadius:0,fill:false,stepped:true}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{x:{ticks:{color:'#7b82a8'},grid:{color:'rgba(255,255,255,0.05)'}},
+          y:{ticks:{color:'#7b82a8'},grid:{color:'rgba(255,255,255,0.05)'}}}
+      }
+    });
+  }
+  depthEl.addEventListener('input', updateTree);
+  minEl.addEventListener('input', updateTree);
+  updateTree();
+}
+
+// ---- KNN Page ----
+function knnPredict(x, k, xs, ys) {
+  const dists = xs.map((xi,i) => ({d: Math.abs(x-xi), i}));
+  dists.sort((a,b)=>a.d-b.d);
+  const neighbors = dists.slice(0,k);
+  return neighbors.reduce((s,nb)=>s+ys[nb.i],0)/k;
+}
+
+function initKNN() {
+  const kEl = document.getElementById('knn-k');
+  const rng = seeded(21);
+  const xsTrain = Array.from({length:30},(_,i)=>-3+6*i/29);
+  const ysTrain = xsTrain.map(x=>Math.sin(x*1.5)*2.5 + 0.7*(rng()*2-1));
+  function updateKNN() {
+    const k = parseInt(kEl.value);
+    document.getElementById('knn-k-val').textContent = k;
+    const xsLine = Array.from({length:100},(_,i)=>-3+6*i/99);
+    const predsLine = xsLine.map(x=>knnPredict(x,k,xsTrain,ysTrain));
+    const predsTrain = xsTrain.map(x=>knnPredict(x,k,xsTrain,ysTrain));
+    const metrics = calcMetrics(ysTrain,predsTrain);
+    renderMetrics('knn-metrics',metrics);
+    destroyChart('knn');
+    const ctx = document.getElementById('knnChart').getContext('2d');
+    charts['knn'] = new Chart(ctx, {
+      data:{datasets:[
+        {type:'scatter',label:'Dados',data:xsTrain.map((x,i)=>({x,y:ysTrain[i]})),backgroundColor:'rgba(108,255,180,0.7)',pointRadius:5},
+        {type:'line',label:`KNN (K=${k})`,data:xsLine.map((x,i)=>({x,y:predsLine[i]})),borderColor:'#ff6c8c',borderWidth:2,pointRadius:0,fill:false,tension:0.1}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{x:{ticks:{color:'#7b82a8'},grid:{color:'rgba(255,255,255,0.05)'}},
+          y:{ticks:{color:'#7b82a8'},grid:{color:'rgba(255,255,255,0.05)'}}}
+      }
+    });
+  }
+  kEl.addEventListener('input', updateKNN);
+  updateKNN();
+}
+
+// ---- RF Page ----
+function rfPredict(x, nTrees, depth, xs, ys) {
+  const preds = [];
+  for(let t=0;t<nTrees;t++){
+    const rng2=seeded(t*37+17);
+    const bootXs=[],bootYs=[];
+    for(let i=0;i<xs.length;i++){
+      const idx=Math.floor(rng2()*xs.length);
+      bootXs.push(xs[idx]); bootYs.push(ys[idx]);
+    }
+    preds.push(dtPredict(x,depth,2,bootXs,bootYs));
+  }
+  return preds.reduce((s,v)=>s+v,0)/nTrees;
+}
+
+function initRF() {
+  const treesEl = document.getElementById('rf-trees');
+  const depthEl = document.getElementById('rf-depth');
+  const rng = seeded(31);
+  const xsTrain = Array.from({length:35},(_,i)=>-3+6*i/34);
+  const ysTrain = xsTrain.map(x=>Math.sin(x)*2 + Math.cos(x*2)*1.2 + 0.7*(rng()*2-1));
+  function updateRF() {
+    const nTrees = parseInt(treesEl.value);
+    const depth = parseInt(depthEl.value);
+    document.getElementById('rf-trees-val').textContent = nTrees;
+    document.getElementById('rf-depth-val').textContent = depth;
+    document.getElementById('rf-info').textContent = `${nTrees} árvores × profundidade ${depth} = até ${nTrees * (Math.pow(2,depth)-1)} nós total`;
+    const xsLine = Array.from({length:80},(_,i)=>-3+6*i/79);
+    const predsRF = xsLine.map(x=>rfPredict(x,nTrees,depth,xsTrain,ysTrain));
+    const predsTree1 = xsLine.map(x=>dtPredict(x,depth,2,xsTrain,ysTrain));
+    const metricsRF = calcMetrics(ysTrain, xsTrain.map(x=>rfPredict(x,nTrees,depth,xsTrain,ysTrain)));
+    renderMetrics('rf-metrics',metricsRF);
+    destroyChart('rf');
+    const ctx = document.getElementById('rfChart').getContext('2d');
+    charts['rf'] = new Chart(ctx, {
+      data:{datasets:[
+        {type:'scatter',label:'Dados',data:xsTrain.map((x,i)=>({x,y:ysTrain[i]})),backgroundColor:'rgba(108,255,180,0.6)',pointRadius:4},
+        {type:'line',label:'1 Árvore',data:xsLine.map((x,i)=>({x,y:predsTree1[i]})),borderColor:'rgba(255,201,108,0.6)',borderWidth:1.5,pointRadius:0,fill:false,stepped:true,borderDash:[4,3]},
+        {type:'line',label:`Forest (${nTrees} árvores)`,data:xsLine.map((x,i)=>({x,y:predsRF[i]})),borderColor:'#6cffb4',borderWidth:2.5,pointRadius:0,fill:false,tension:0.2}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{x:{ticks:{color:'#7b82a8'},grid:{color:'rgba(255,255,255,0.05)'}},
+          y:{ticks:{color:'#7b82a8'},grid:{color:'rgba(255,255,255,0.05)'}}}
+      }
+    });
+  }
+  treesEl.addEventListener('input', updateRF);
+  depthEl.addEventListener('input', updateRF);
+  updateRF();
+}
+
+// ---- Metrics Page ----
+function initMetricas() {
+  const spreadEl = document.getElementById('err-spread');
+  const outlierEl = document.getElementById('outlier-intensity');
+  const xsTrue = Array.from({length:25},(_,i)=>i*4+10);
+  const yTrue = xsTrue.map(x=>x*1.5 + 20);
+  function updateMetric() {
+    const spread = parseFloat(spreadEl.value);
+    const outlier = parseInt(outlierEl.value);
+    document.getElementById('err-spread-val').textContent = spread.toFixed(1);
+    document.getElementById('outlier-val').textContent = outlier;
+    const rng = seeded(99);
+    const yPred = yTrue.map((y,i) => {
+      let e = spread * (rng()*2-1) * 10;
+      if(i < outlier) e += 50 * (rng()>0.5?1:-1);
+      return y + e;
+    });
+    const metrics = calcMetrics(yTrue,yPred);
+    document.getElementById('metric-sim-values').innerHTML = `
+      <div class="metric"><div class="metric-name">MAE</div><div class="metric-val">${metrics.mae.toFixed(1)}</div></div>
+      <div class="metric"><div class="metric-name">RMSE</div><div class="metric-val" style="color:var(--accent2)">${metrics.rmse.toFixed(1)}</div></div>
+      <div class="metric"><div class="metric-name">R²</div><div class="metric-val" style="color:var(--accent4)">${metrics.r2.toFixed(3)}</div></div>
+    `;
+    const exp = document.getElementById('metric-explanation');
+    const diff = metrics.rmse - metrics.mae;
+    exp.innerHTML = `
+      ${diff > 10 ? '<span style="color:var(--accent2)">⚠️ RMSE muito maior que MAE → existem outliers penalizando bastante.</span>' : '<span style="color:var(--accent3)">✅ RMSE próximo ao MAE → erros distribuídos uniformemente, sem outliers grandes.</span>'}
+      <br>R² = ${metrics.r2.toFixed(3)} → o modelo explica <strong>${(metrics.r2*100).toFixed(1)}%</strong> da variância dos dados.
+    `;
+    destroyChart('metric');
+    const ctx = document.getElementById('metricChart').getContext('2d');
+    const residuos = yTrue.map((y,i)=>yPred[i]-y);
+    charts['metric'] = new Chart(ctx, {
+      type:'scatter',
+      data:{datasets:[
+        {label:'Resíduos',data:xsTrue.map((x,i)=>({x:yPred[i],y:residuos[i]})),
+          backgroundColor: residuos.map(r => Math.abs(r)>30?'rgba(255,108,140,0.8)':'rgba(108,140,255,0.7)'),
+          pointRadius:5}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+        annotation:{annotations:{line:{type:'line',yMin:0,yMax:0,borderColor:'rgba(255,255,255,0.3)',borderWidth:1.5,borderDash:[4,3]}}}},
+        scales:{
+          x:{title:{display:true,text:'Previsão',color:'#7b82a8'},ticks:{color:'#7b82a8'},grid:{color:'rgba(255,255,255,0.05)'}},
+          y:{title:{display:true,text:'Resíduo (prev - real)',color:'#7b82a8'},ticks:{color:'#7b82a8'},grid:{color:'rgba(255,255,255,0.05)'}}
+        }
+      }
+    });
+  }
+  spreadEl.addEventListener('input', updateMetric);
+  outlierEl.addEventListener('input', updateMetric);
+  updateMetric();
+}
+
+// ---- Compare Page ----
+function initComparativo() {
+  const rng = seeded(55);
+  const xsTrain = Array.from({length:40},(_,i)=>-3+6*i/39);
+  const ysTrain = xsTrain.map(x=>Math.sin(x*1.2)*3 + 0.5*(rng()*2-1));
+  const xsLine = Array.from({length:80},(_,i)=>-3+6*i/79);
+
+  const rng2 = seeded(55);
+  const ysTrain2 = xsTrain.map(x=>Math.sin(x*1.2)*3 + 0.5*(rng2()*2-1));
+
+  // Linear (degree 1)
+  let coeffs1; try{coeffs1=fitPoly(xsTrain,ysTrain2,1);}catch(e){coeffs1=[0,1];}
+  const predLin = xsLine.map(x=>polyPredict(coeffs1,x));
+
+  // Poly degree 3
+  let coeffs3; try{coeffs3=fitPoly(xsTrain,ysTrain2,3);}catch(e){coeffs3=[0,1,0,0];}
+  const predPoly = xsLine.map(x=>polyPredict(coeffs3,x));
+
+  // Tree depth 3
+  const predTree = xsLine.map(x=>dtPredict(x,3,3,xsTrain,ysTrain));
+
+  // KNN k=5
+  const predKNN = xsLine.map(x=>knnPredict(x,5,xsTrain,ysTrain));
+
+  // RF
+  const predRF = xsLine.map(x=>rfPredict(x,20,4,xsTrain,ysTrain));
+
+  // Metrics on training
+  const models = [
+    {name:'Linear',preds:xsTrain.map(x=>polyPredict(coeffs1,x)),color:'#6c8cff'},
+    {name:'Polinomial (g=3)',preds:xsTrain.map(x=>polyPredict(coeffs3,x)),color:'#c86cff'},
+    {name:'Árvore (d=3)',preds:xsTrain.map(x=>dtPredict(x,3,3,xsTrain,ysTrain)),color:'#ffc96c'},
+    {name:'KNN (k=5)',preds:xsTrain.map(x=>knnPredict(x,5,xsTrain,ysTrain)),color:'#ff6c8c'},
+    {name:'Random Forest',preds:xsTrain.map(x=>rfPredict(x,20,4,xsTrain,ysTrain)),color:'#6cffb4'},
+  ];
+  const mDiv = document.getElementById('compare-metrics');
+  mDiv.innerHTML = `<table class="comparison-table">
+    <tr><th>Modelo</th><th>MAE</th><th>RMSE</th><th>R²</th></tr>
+    ${models.map(m=>{const met=calcMetrics(ysTrain,m.preds);
+      return `<tr>
+        <td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${m.color};margin-right:6px"></span>${m.name}</td>
+        <td>${met.mae.toFixed(3)}</td>
+        <td>${met.rmse.toFixed(3)}</td>
+        <td style="color:${met.r2>0.9?'var(--accent3)':met.r2>0.7?'var(--accent4)':'var(--accent2)'}">${met.r2.toFixed(3)}</td>
+      </tr>`;}).join('')}
+  </table>`;
+
+  destroyChart('compare');
+  const ctx = document.getElementById('compareChart').getContext('2d');
+  charts['compare'] = new Chart(ctx, {
+    data:{datasets:[
+      {type:'scatter',label:'Dados',data:xsTrain.map((x,i)=>({x,y:ysTrain[i]})),backgroundColor:'rgba(255,255,255,0.3)',pointRadius:4},
+      {type:'line',label:'Linear',data:xsLine.map((x,i)=>({x,y:predLin[i]})),borderColor:'#6c8cff',borderWidth:1.8,pointRadius:0,fill:false,borderDash:[6,3]},
+      {type:'line',label:'Polinomial',data:xsLine.map((x,i)=>({x,y:predPoly[i]})),borderColor:'#c86cff',borderWidth:1.8,pointRadius:0,fill:false,borderDash:[3,3]},
+      {type:'line',label:'Árvore',data:xsLine.map((x,i)=>({x,y:predTree[i]})),borderColor:'#ffc96c',borderWidth:1.8,pointRadius:0,fill:false,stepped:true},
+      {type:'line',label:'KNN',data:xsLine.map((x,i)=>({x,y:predKNN[i]})),borderColor:'#ff6c8c',borderWidth:1.8,pointRadius:0,fill:false},
+      {type:'line',label:'Random Forest',data:xsLine.map((x,i)=>({x,y:predRF[i]})),borderColor:'#6cffb4',borderWidth:2.5,pointRadius:0,fill:false}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#7b82a8'},grid:{color:'rgba(255,255,255,0.05)'}},
+        y:{ticks:{color:'#7b82a8'},grid:{color:'rgba(255,255,255,0.05)'}}}
+    }
+  });
+}
+
+function initPage(id) {
+  if(id==='linear') initLinear();
+  else if(id==='poly') initPoly();
+  else if(id==='tree') initTree();
+  else if(id==='knn') initKNN();
+  else if(id==='rf') initRF();
+  else if(id==='metricas') initMetricas();
+  else if(id==='comparativo') initComparativo();
+}
+</script>
+</body>
+</html>
