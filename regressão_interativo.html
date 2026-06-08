@@ -1127,25 +1127,34 @@ function initLinear() {
 
 // ---- Poly Page ----
 function fitPoly(xs, ys, degree) {
-  const n = xs.length;
-  const mat = xs.map(x => Array.from({length:degree+1},(_,d) => Math.pow(x,d)));
-  const A = mat; const b = ys;
-  const AT = A[0].map((_,j) => A.map(r=>r[j]));
-  const ATA = AT.map(row => AT[0].map((_,k) => row.reduce((s,_,i)=>s+row[i]*AT[i][k],0)));
-  const ATb = AT.map(row => row.reduce((s,v,i)=>s+v*b[i],0));
-  // small system - Gaussian elimination
-  const aug = ATA.map((row,i) => [...row, ATb[i]]);
-  const nd = degree+1;
-  for(let col=0;col<nd;col++){
-    let maxR=col; for(let r=col+1;r<nd;r++) if(Math.abs(aug[r][col])>Math.abs(aug[maxR][col])) maxR=r;
-    [aug[col],aug[maxR]]=[aug[maxR],aug[col]];
-    for(let r=0;r<nd;r++){
-      if(r===col) continue;
-      const f=aug[r][col]/aug[col][col];
-      for(let c=col;c<=nd;c++) aug[r][c]-=f*aug[col][c];
+  const nd = degree + 1;
+  // monta matriz de Vandermonde A (n x nd)
+  const A = xs.map(x => Array.from({length: nd}, (_, d) => Math.pow(x, d)));
+  // AT = transposta de A (nd x n)
+  const AT = Array.from({length: nd}, (_, j) => A.map(r => r[j]));
+  // ATA = AT * A  (nd x nd)
+  const ATA = Array.from({length: nd}, (_, i) =>
+    Array.from({length: nd}, (_, j) =>
+      AT[i].reduce((s, v, k) => s + v * AT[j][k], 0)
+    )
+  );
+  // ATb = AT * y  (nd)
+  const ATb = AT.map(row => row.reduce((s, v, i) => s + v * ys[i], 0));
+  // eliminação gaussiana com pivoteamento parcial
+  const aug = ATA.map((row, i) => [...row, ATb[i]]);
+  for (let col = 0; col < nd; col++) {
+    let maxR = col;
+    for (let r = col + 1; r < nd; r++)
+      if (Math.abs(aug[r][col]) > Math.abs(aug[maxR][col])) maxR = r;
+    [aug[col], aug[maxR]] = [aug[maxR], aug[col]];
+    if (Math.abs(aug[col][col]) < 1e-12) continue;
+    for (let r = 0; r < nd; r++) {
+      if (r === col) continue;
+      const f = aug[r][col] / aug[col][col];
+      for (let c = col; c <= nd; c++) aug[r][c] -= f * aug[col][c];
     }
   }
-  return aug.map((row,i)=>row[nd]/row[i]);
+  return aug.map((row, i) => row[nd] / row[i]);
 }
 
 function polyPredict(coeffs, x) {
@@ -1188,16 +1197,37 @@ function initPoly() {
     ).join('');
     destroyChart('poly');
     const ctx = document.getElementById('polyChart').getContext('2d');
+    const lineColor = deg>=7?'#ff6c8c':deg>=4?'#ffc96c':'#6c8cff';
+    const clamp = v => Math.max(-6, Math.min(10, v));
     charts['poly'] = new Chart(ctx, {
+      type: 'scatter',
       data:{
         datasets:[
-          {type:'scatter',label:'Dados',data:xsTrain.map((x,i)=>({x,y:ysTrain[i]})),backgroundColor:'rgba(108,255,180,0.7)',pointRadius:5},
-          {type:'line',label:'Modelo',data:xsLine.map((x,i)=>({x,y:predsLine[i]})),borderColor: deg>=7?'#ff6c8c':deg>=4?'#ffc96c':'#6c8cff',borderWidth:2,pointRadius:0,fill:false,tension:0.1}
+          {
+            label:'Dados',
+            data: xsTrain.map((x,i) => ({x, y: ysTrain[i]})),
+            backgroundColor:'rgba(108,255,180,0.8)',
+            pointRadius:5, pointHoverRadius:7
+          },
+          {
+            label:'Modelo',
+            type:'line',
+            data: xsLine.map((x,i) => ({x, y: clamp(predsLine[i])})),
+            borderColor: lineColor,
+            backgroundColor:'transparent',
+            borderWidth:2.5,
+            pointRadius:0,
+            fill:false,
+            tension:0.2,
+            showLine:true
+          }
         ]
       },
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      options:{
+        responsive:true, maintainAspectRatio:false, animation:false,
+        plugins:{legend:{display:false}},
         scales:{
-          x:{ticks:{color:'#7b82a8'},grid:{color:'rgba(255,255,255,0.05)'}},
+          x:{type:'linear',ticks:{color:'#7b82a8'},grid:{color:'rgba(255,255,255,0.05)'},min:-3,max:3},
           y:{ticks:{color:'#7b82a8'},grid:{color:'rgba(255,255,255,0.05)'},min:-4,max:8}
         }
       }
@@ -1458,17 +1488,22 @@ function initComparativo() {
   destroyChart('compare');
   const ctx = document.getElementById('compareChart').getContext('2d');
   charts['compare'] = new Chart(ctx, {
+    type: 'scatter',
     data:{datasets:[
-      {type:'scatter',label:'Dados',data:xsTrain.map((x,i)=>({x,y:ysTrain[i]})),backgroundColor:'rgba(255,255,255,0.3)',pointRadius:4},
-      {type:'line',label:'Linear',data:xsLine.map((x,i)=>({x,y:predLin[i]})),borderColor:'#6c8cff',borderWidth:1.8,pointRadius:0,fill:false,borderDash:[6,3]},
-      {type:'line',label:'Polinomial',data:xsLine.map((x,i)=>({x,y:predPoly[i]})),borderColor:'#c86cff',borderWidth:1.8,pointRadius:0,fill:false,borderDash:[3,3]},
-      {type:'line',label:'Árvore',data:xsLine.map((x,i)=>({x,y:predTree[i]})),borderColor:'#ffc96c',borderWidth:1.8,pointRadius:0,fill:false,stepped:true},
-      {type:'line',label:'KNN',data:xsLine.map((x,i)=>({x,y:predKNN[i]})),borderColor:'#ff6c8c',borderWidth:1.8,pointRadius:0,fill:false},
-      {type:'line',label:'Random Forest',data:xsLine.map((x,i)=>({x,y:predRF[i]})),borderColor:'#6cffb4',borderWidth:2.5,pointRadius:0,fill:false}
+      {label:'Dados',data:xsTrain.map((x,i)=>({x,y:ysTrain[i]})),backgroundColor:'rgba(255,255,255,0.3)',pointRadius:4},
+      {type:'line',label:'Linear',data:xsLine.map((x,i)=>({x,y:predLin[i]})),borderColor:'#6c8cff',backgroundColor:'transparent',borderWidth:1.8,pointRadius:0,fill:false,showLine:true,borderDash:[6,3]},
+      {type:'line',label:'Polinomial',data:xsLine.map((x,i)=>({x,y:predPoly[i]})),borderColor:'#c86cff',backgroundColor:'transparent',borderWidth:1.8,pointRadius:0,fill:false,showLine:true,borderDash:[3,3]},
+      {type:'line',label:'Árvore',data:xsLine.map((x,i)=>({x,y:predTree[i]})),borderColor:'#ffc96c',backgroundColor:'transparent',borderWidth:1.8,pointRadius:0,fill:false,showLine:true,stepped:true},
+      {type:'line',label:'KNN',data:xsLine.map((x,i)=>({x,y:predKNN[i]})),borderColor:'#ff6c8c',backgroundColor:'transparent',borderWidth:1.8,pointRadius:0,fill:false,showLine:true},
+      {type:'line',label:'Random Forest',data:xsLine.map((x,i)=>({x,y:predRF[i]})),borderColor:'#6cffb4',backgroundColor:'transparent',borderWidth:2.5,pointRadius:0,fill:false,showLine:true}
     ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-      scales:{x:{ticks:{color:'#7b82a8'},grid:{color:'rgba(255,255,255,0.05)'}},
-        y:{ticks:{color:'#7b82a8'},grid:{color:'rgba(255,255,255,0.05)'}}}
+    options:{
+      responsive:true,maintainAspectRatio:false,animation:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{type:'linear',ticks:{color:'#7b82a8'},grid:{color:'rgba(255,255,255,0.05)'},min:-3,max:3},
+        y:{ticks:{color:'#7b82a8'},grid:{color:'rgba(255,255,255,0.05)'}}
+      }
     }
   });
 }
