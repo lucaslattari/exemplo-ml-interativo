@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Regressão Logística — Visualização Interativa</title>
+<style>
+  :root {
+    --accent: #2E75B6;
+    --accent-dark: #1F4E79;
+    --bg: #F4F7FB;
+    --card: #FFFFFF;
+    --border: #D7E3F0;
+    --class0: #2E75B6;
+    --class1: #E2725B;
+    --text: #2B2B2B;
+    --muted: #6B7280;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+  }
+  h1 {
+    color: var(--accent-dark);
+    margin: 0 0 4px;
+    font-size: 28px;
+  }
+  .subtitle {
+    color: var(--muted);
+    margin: 0 0 24px;
+    font-size: 15px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  @media (min-width: 980px) {
+    .grid { grid-template-columns: 1fr 1fr; }
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 6px rgba(31,78,121,0.06);
+  }
+  .card h2 {
+    margin: 0 0 8px;
+    font-size: 19px;
+    color: var(--accent-dark);
+  }
+  .card p.desc {
+    margin: 0 0 16px;
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  canvas {
+    width: 100%;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: block;
+    touch-action: none;
+  }
+  .controls {
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .control-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+  }
+  .control-row label {
+    width: 150px;
+    flex-shrink: 0;
+    color: var(--text);
+  }
+  .control-row input[type="range"] {
+    flex: 1;
+    accent-color: var(--accent);
+  }
+  .control-row .val {
+    width: 56px;
+    text-align: right;
+    font-family: "Consolas", monospace;
+    font-size: 13px;
+    color: var(--accent-dark);
+    font-weight: bold;
+  }
+  .buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+  button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  button:hover { background: var(--accent-dark); }
+  button.secondary {
+    background: #fff;
+    color: var(--accent-dark);
+    border: 1px solid var(--accent);
+  }
+  button.secondary:hover { background: var(--bg); }
+  .metrics {
+    display: flex;
+    gap: 18px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+    font-size: 14px;
+  }
+  .metric {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    text-align: center;
+    min-width: 90px;
+  }
+  .metric .label { font-size: 12px; color: var(--muted); }
+  .metric .value { font-size: 18px; font-weight: bold; color: var(--accent-dark); font-family: "Consolas", monospace; }
+  .legend {
+    display: flex;
+    gap: 16px;
+    font-size: 13px;
+    margin-top: 10px;
+    color: var(--muted);
+    flex-wrap: wrap;
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .dot {
+    width: 12px; height: 12px; border-radius: 50%;
+    display: inline-block;
+  }
+  .note {
+    background: var(--bg);
+    border-left: 4px solid var(--accent);
+    padding: 10px 14px;
+    margin-top: 14px;
+    font-size: 13px;
+    color: var(--text);
+    border-radius: 0 6px 6px 0;
+    line-height: 1.5;
+  }
+  .formula {
+    font-family: "Consolas", monospace;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 14px;
+    margin: 10px 0;
+    display: inline-block;
+  }
+  .full-width { grid-column: 1 / -1; }
+  .hint {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Regressão Logística — Visualização Interativa</h1>
+<p class="subtitle">Brinque com os controles para entender, de forma visual, como o algoritmo transforma números em probabilidades e como ele aprende uma fronteira de decisão.</p>
+
+<div class="grid">
+
+  <!-- ===================== PAINEL 1: FUNÇÃO SIGMOIDE ===================== -->
+  <div class="card">
+    <h2>1. A função sigmoide</h2>
+    <p class="desc">
+      A Regressão Logística calcula um valor <b>z = w·x + b</b> (igual a uma reta) e depois passa esse valor pela
+      função sigmoide, que o transforma em um número entre 0 e 1 — uma probabilidade.
+    </p>
+    <div class="formula">probabilidade = sigmoide(w · x + b)</div>
+
+    <canvas id="sigCanvas" width="500" height="320"></canvas>
+
+    <div class="controls">
+      <div class="control-row">
+        <label for="sig-w">Peso (w)</label>
+        <input type="range" id="sig-w" min="-3" max="3" step="0.1" value="1">
+        <span class="val" id="sig-w-val">1.0</span>
+      </div>
+      <div class="control-row">
+        <label for="sig-b">Viés (b)</label>
+        <input type="range" id="sig-b" min="-6" max="6" step="0.1" value="0">
+        <span class="val" id="sig-b-val">0.0</span>
+      </div>
+      <div class="control-row">
+        <label for="sig-x">Valor de entrada (x)</label>
+        <input type="range" id="sig-x" min="-6" max="6" step="0.1" value="2">
+        <span class="val" id="sig-x-val">2.0</span>
+      </div>
+      <div class="control-row">
+        <label for="sig-t">Limiar (threshold)</label>
+        <input type="range" id="sig-t" min="0.05" max="0.95" step="0.05" value="0.5">
+        <span class="val" id="sig-t-val">0.50</span>
+      </div>
+    </div>
+
+    <div class="metrics">
+      <div class="metric">
+        <div class="label">z = w·x + b</div>
+        <div class="value" id="sig-z">2.00</div>
+      </div>
+      <div class="metric">
+        <div class="label">probabilidade</div>
+        <div class="value" id="sig-p">0.88</div>
+      </div>
+      <div class="metric">
+        <div class="label">classe prevista</div>
+        <div class="value" id="sig-class">1</div>
+      </div>
+      <div class="metric">
+        <div class="label">acertos (exemplos)</div>
+        <div class="value" id="sig-acc">—</div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span><span class="dot" style="background:#2E75B6;"></span> Classe 0 (real)</span>
+      <span><span class="dot" style="background:#E2725B;"></span> Classe 1 (real)</span>
+      <span><span class="dot" style="background:#fff; border:2px solid #1A1A1A;"></span> Previsão errada</span>
+    </div>
+
+    <div class="note">
+      Note que, por maior ou menor que <b>z</b> seja, a probabilidade nunca passa de 0 ou de 1 — a curva apenas se
+      aproxima desses limites. Mudar <b>w</b> torna a transição entre as classes mais "brusca" ou mais "suave";
+      mudar <b>b</b> desloca a curva para os lados. Os pontos coloridos são exemplos de um conjunto de dados fictício
+      (eixo x = valor do atributo, altura = classe real 0 ou 1). Veja como eles vão "trocando de lado" do limiar
+      conforme você ajusta w e b — é exatamente esse processo, repetido automaticamente, que o treinamento faz.
+    </div>
+  </div>
+
+  <!-- ===================== PAINEL 2: FRONTEIRA DE DECISÃO 2D ===================== -->
+  <div class="card">
+    <h2>2. Fronteira de decisão em 2D</h2>
+    <p class="desc">
+      Aqui cada ponto é um exemplo com dois atributos (x₁ e x₂) e uma classe (cor). Ajuste w₁, w₂ e b manualmente,
+      ou clique em <b>"Treinar"</b> para que o algoritmo encontre os melhores valores sozinho, usando gradiente
+      descendente — exatamente como o <code>model.fit()</code> do scikit-learn faz por trás dos panos.
+    </p>
+
+    <canvas id="dbCanvas" width="500" height="500"></canvas>
+
+    <div class="legend">
+      <span><span class="dot" style="background: var(--class0);"></span> Classe 0</span>
+      <span><span class="dot" style="background: var(--class1);"></span> Classe 1</span>
+      <span>Fundo: azul → probabilidade baixa &nbsp;|&nbsp; vermelho → probabilidade alta</span>
+    </div>
+
+    <div class="controls">
+      <div class="control-row">
+        <label for="w1">Peso w₁ (eixo x₁)</label>
+        <input type="range" id="w1" min="-3" max="3" step="0.05" value="0.5">
+        <span class="val" id="w1-val">0.50</span>
+      </div>
+      <div class="control-row">
+        <label for="w2">Peso w₂ (eixo x₂)</label>
+        <input type="range" id="w2" min="-3" max="3" step="0.05" value="0.5">
+        <span class="val" id="w2-val">0.50</span>
+      </div>
+      <div class="control-row">
+        <label for="bias">Viés (b)</label>
+        <input type="range" id="bias" min="-6" max="6" step="0.1" value="0">
+        <span class="val" id="bias-val">0.0</span>
+      </div>
+    </div>
+
+    <div class="buttons">
+      <button id="trainBtn">▶ Treinar (gradiente descendente)</button>
+      <button class="secondary" id="resetBtn">Resetar pesos</button>
+      <button class="secondary" id="newDataBtn">🔀 Novos dados</button>
+    </div>
+    <div class="hint">Dica: clique no gráfico para adicionar um ponto da classe selecionada abaixo.</div>
+    <div class="control-row" style="margin-top:6px;">
+      <label>Adicionar ponto da</label>
+      <label style="width:auto;"><input type="radio" name="addclass" value="0" checked> Classe 0</label>
+      <label style="width:auto;"><input type="radio" name="addclass" value="1"> Classe 1</label>
+    </div>
+
+    <div class="metrics">
+      <div class="metric">
+        <div class="label">acurácia</div>
+        <div class="value" id="db-acc">—</div>
+      </div>
+      <div class="metric">
+        <div class="label">perda (log-loss)</div>
+        <div class="value" id="db-loss">—</div>
+      </div>
+      <div class="metric">
+        <div class="label">iteração</div>
+        <div class="value" id="db-iter">0</div>
+      </div>
+    </div>
+
+    <div class="note">
+      A linha branca é a <b>fronteira de decisão</b>: o lugar onde a probabilidade prevista é exatamente 0,5
+      (w₁·x₁ + w₂·x₂ + b = 0). De um lado da linha o modelo prevê a classe 0; do outro, a classe 1. Pontos com um
+      contorno preto mais espesso são os que o modelo está classificando <b>errado</b> com os pesos atuais.
+    </div>
+  </div>
+
+</div>
+
+<script>
+// =====================================================================
+// PAINEL 1 — SIGMOIDE
+// =====================================================================
+const sigCanvas = document.getElementById('sigCanvas');
+const sctx = sigCanvas.getContext('2d');
+
+const sigW = document.getElementById('sig-w');
+const sigB = document.getElementById('sig-b');
+const sigX = document.getElementById('sig-x');
+const sigT = document.getElementById('sig-t');
+
+function sigmoid(z) { return 1 / (1 + Math.exp(-z)); }
+
+// Pontos de exemplo fixos (ex.: "horas de estudo" vs "passou (1) / não passou (0)")
+const sigExamplePoints = [
+  { x: -5.0, label: 0 },
+  { x: -4.2, label: 0 },
+  { x: -3.0, label: 0 },
+  { x: -2.1, label: 0 },
+  { x: -0.8, label: 0 },
+  { x: -0.2, label: 1 },
+  { x: 0.6,  label: 0 },
+  { x: 1.4,  label: 1 },
+  { x: 2.3,  label: 1 },
+  { x: 3.1,  label: 1 },
+  { x: 4.0,  label: 1 },
+  { x: 4.8,  label: 1 },
+];
+
+function resizeCanvas(canvas) {
+  const ratio = window.devicePixelRatio || 1;
+  const cssWidth = canvas.clientWidth;
+  const cssHeight = canvas.clientHeight;
+  canvas.width = cssWidth * ratio;
+  canvas.height = cssHeight * ratio;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  return { w: cssWidth, h: cssHeight };
+}
+
+function drawSigmoid() {
+  const { w, h } = resizeCanvas(sigCanvas);
+  sctx.clearRect(0, 0, w, h);
+
+  const wVal = parseFloat(sigW.value);
+  const bVal = parseFloat(sigB.value);
+  const xVal = parseFloat(sigX.value);
+  const tVal = parseFloat(sigT.value);
+
+  const xMin = -6, xMax = 6;
+  const margin = { left: 46, right: 16, top: 16, bottom: 30 };
+  const plotW = w - margin.left - margin.right;
+  const plotH = h - margin.top - margin.bottom;
+
+  function toPx(x) { return margin.left + (x - xMin) / (xMax - xMin) * plotW; }
+  function toPy(p) { return margin.top + (1 - p) * plotH; }
+
+  // axes
+  sctx.strokeStyle = '#D7E3F0';
+  sctx.lineWidth = 1;
+  for (let gx = xMin; gx <= xMax; gx += 2) {
+    sctx.beginPath();
+    sctx.moveTo(toPx(gx), margin.top);
+    sctx.lineTo(toPx(gx), margin.top + plotH);
+    sctx.stroke();
+  }
+  for (let gp = 0; gp <= 1; gp += 0.25) {
+    sctx.beginPath();
+    sctx.moveTo(margin.left, toPy(gp));
+    sctx.lineTo(margin.left + plotW, toPy(gp));
+    sctx.stroke();
+  }
+
+  // axis labels
+  sctx.fillStyle = '#6B7280';
+  sctx.font = '11px Arial';
+  sctx.textAlign = 'center';
+  for (let gx = xMin; gx <= xMax; gx += 2) {
+    sctx.fillText(gx.toString(), toPx(gx), margin.top + plotH + 16);
+  }
+  sctx.textAlign = 'right';
+  for (let gp = 0; gp <= 1; gp += 0.25) {
+    sctx.fillText(gp.toFixed(2), margin.left - 6, toPy(gp) + 3);
+  }
+
+  // threshold line
+  sctx.strokeStyle = '#E2725B';
+  sctx.setLineDash([5, 4]);
+  sctx.lineWidth = 1.5;
+  sctx.beginPath();
+  sctx.moveTo(margin.left, toPy(tVal));
+  sctx.lineTo(margin.left + plotW, toPy(tVal));
+  sctx.stroke();
+  sctx.setLineDash([]);
+  sctx.fillStyle = '#E2725B';
+  sctx.textAlign = 'left';
+  sctx.fillText('limiar = ' + tVal.toFixed(2), margin.left + plotW - 90, toPy(tVal) - 6);
+
+  // sigmoid curve
+  sctx.strokeStyle = '#2E75B6';
+  sctx.lineWidth = 2.5;
+  sctx.beginPath();
+  for (let px = 0; px <= plotW; px++) {
+    const x = xMin + (px / plotW) * (xMax - xMin);
+    const z = wVal * x + bVal;
+    const prob = sigmoid(z);
+    const py = toPy(prob);
+    if (px === 0) sctx.moveTo(margin.left + px, py);
+    else sctx.lineTo(margin.left + px, py);
+  }
+  sctx.stroke();
+
+  // pontos de exemplo (dataset fictício)
+  let correctCount = 0;
+  sigExamplePoints.forEach(pt => {
+    const z = wVal * pt.x + bVal;
+    const prob = sigmoid(z);
+    const predicted = prob >= tVal ? 1 : 0;
+    const isCorrect = predicted === pt.label;
+    if (isCorrect) correctCount++;
+
+    const xPx = toPx(pt.x);
+    const trueY = toPy(pt.label);
+    const predY = toPy(prob);
+
+    // linha pontilhada ligando a posição real à posição prevista na curva
+    sctx.strokeStyle = '#C9D4E0';
+    sctx.setLineDash([2, 3]);
+    sctx.lineWidth = 1;
+    sctx.beginPath();
+    sctx.moveTo(xPx, trueY);
+    sctx.lineTo(xPx, predY);
+    sctx.stroke();
+    sctx.setLineDash([]);
+
+    // marcador da classe real (na linha y=0 ou y=1)
+    sctx.beginPath();
+    sctx.arc(xPx, trueY, 5, 0, Math.PI * 2);
+    sctx.fillStyle = pt.label === 1 ? '#E2725B' : '#2E75B6';
+    sctx.fill();
+    sctx.strokeStyle = '#fff';
+    sctx.lineWidth = 1;
+    sctx.stroke();
+
+    // marcador da probabilidade prevista sobre a curva
+    sctx.beginPath();
+    sctx.arc(xPx, predY, 4, 0, Math.PI * 2);
+    sctx.fillStyle = pt.label === 1 ? '#E2725B' : '#2E75B6';
+    sctx.fill();
+    sctx.lineWidth = isCorrect ? 1 : 2.5;
+    sctx.strokeStyle = isCorrect ? '#fff' : '#1A1A1A';
+    sctx.stroke();
+  });
+
+  document.getElementById('sig-acc').textContent =
+    correctCount + ' / ' + sigExamplePoints.length;
+
+
+  const zCur = wVal * xVal + bVal;
+  const pCur = sigmoid(zCur);
+  const px = toPx(xVal), py = toPy(pCur);
+
+  sctx.strokeStyle = '#9CA3AF';
+  sctx.setLineDash([3, 3]);
+  sctx.lineWidth = 1;
+  sctx.beginPath();
+  sctx.moveTo(px, margin.top + plotH);
+  sctx.lineTo(px, py);
+  sctx.lineTo(margin.left, py);
+  sctx.stroke();
+  sctx.setLineDash([]);
+
+  sctx.fillStyle = pCur >= tVal ? '#E2725B' : '#2E75B6';
+  sctx.beginPath();
+  sctx.arc(px, py, 6, 0, Math.PI * 2);
+  sctx.fill();
+  sctx.strokeStyle = '#fff';
+  sctx.lineWidth = 2;
+  sctx.stroke();
+
+  // axis titles
+  sctx.fillStyle = '#2B2B2B';
+  sctx.font = 'bold 12px Arial';
+  sctx.textAlign = 'center';
+  sctx.fillText('x (entrada)', margin.left + plotW / 2, h - 4);
+  sctx.save();
+  sctx.translate(12, margin.top + plotH / 2);
+  sctx.rotate(-Math.PI / 2);
+  sctx.fillText('probabilidade', 0, 0);
+  sctx.restore();
+
+  // update metrics
+  document.getElementById('sig-z').textContent = zCur.toFixed(2);
+  document.getElementById('sig-p').textContent = pCur.toFixed(2);
+  document.getElementById('sig-class').textContent = pCur >= tVal ? '1' : '0';
+}
+
+[sigW, sigB, sigX, sigT].forEach(el => el.addEventListener('input', () => {
+  document.getElementById('sig-w-val').textContent = parseFloat(sigW.value).toFixed(1);
+  document.getElementById('sig-b-val').textContent = parseFloat(sigB.value).toFixed(1);
+  document.getElementById('sig-x-val').textContent = parseFloat(sigX.value).toFixed(1);
+  document.getElementById('sig-t-val').textContent = parseFloat(sigT.value).toFixed(2);
+  drawSigmoid();
+}));
+
+// =====================================================================
+// PAINEL 2 — FRONTEIRA DE DECISÃO 2D
+// =====================================================================
+const dbCanvas = document.getElementById('dbCanvas');
+const dctx = dbCanvas.getContext('2d');
+
+const w1Slider = document.getElementById('w1');
+const w2Slider = document.getElementById('w2');
+const biasSlider = document.getElementById('bias');
+
+const DATA_MIN = -6, DATA_MAX = 6;
+
+let points = [];
+
+function gaussianRandom(mean, std) {
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return mean + std * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+function generateData() {
+  points = [];
+  // classe 0 cluster
+  for (let i = 0; i < 25; i++) {
+    points.push({
+      x1: gaussianRandom(-2, 1.4),
+      x2: gaussianRandom(-1.5, 1.4),
+      label: 0
+    });
+  }
+  // classe 1 cluster
+  for (let i = 0; i < 25; i++) {
+    points.push({
+      x1: gaussianRandom(2, 1.4),
+      x2: gaussianRandom(1.5, 1.4),
+      label: 1
+    });
+  }
+}
+
+function dataToPx(x1, x2, w, h, margin) {
+  const plotW = w - margin.left - margin.right;
+  const plotH = h - margin.top - margin.bottom;
+  const px = margin.left + (x1 - DATA_MIN) / (DATA_MAX - DATA_MIN) * plotW;
+  const py = margin.top + (1 - (x2 - DATA_MIN) / (DATA_MAX - DATA_MIN)) * plotH;
+  return [px, py];
+}
+
+function pxToData(px, py, w, h, margin) {
+  const plotW = w - margin.left - margin.right;
+  const plotH = h - margin.top - margin.bottom;
+  const x1 = DATA_MIN + (px - margin.left) / plotW * (DATA_MAX - DATA_MIN);
+  const x2 = DATA_MIN + (1 - (py - margin.top) / plotH) * (DATA_MAX - DATA_MIN);
+  return [x1, x2];
+}
+
+function probColor(p) {
+  // blue (class0) -> red (class1)
+  const c0 = [46, 117, 182];   // #2E75B6
+  const c1 = [226, 114, 91];   // #E2725B
+  const r = Math.round(c0[0] + (c1[0] - c0[0]) * p);
+  const g = Math.round(c0[1] + (c1[1] - c0[1]) * p);
+  const b = Math.round(c0[2] + (c1[2] - c0[2]) * p);
+  return `rgb(${r},${g},${b})`;
+}
+
+function drawDecisionBoundary() {
+  const { w, h } = resizeCanvas(dbCanvas);
+  const margin = { left: 40, right: 16, top: 16, bottom: 34 };
+  const plotW = w - margin.left - margin.right;
+  const plotH = h - margin.top - margin.bottom;
+
+  const W1 = parseFloat(w1Slider.value);
+  const W2 = parseFloat(w2Slider.value);
+  const B = parseFloat(biasSlider.value);
+
+  dctx.clearRect(0, 0, w, h);
+
+  // background probability heatmap
+  const cell = 6;
+  for (let px = margin.left; px < margin.left + plotW; px += cell) {
+    for (let py = margin.top; py < margin.top + plotH; py += cell) {
+      const [x1, x2] = pxToData(px + cell / 2, py + cell / 2, w, h, margin);
+      const z = W1 * x1 + W2 * x2 + B;
+      const prob = sigmoid(z);
+      dctx.fillStyle = probColor(prob);
+      dctx.globalAlpha = 0.25;
+      dctx.fillRect(px, py, cell, cell);
+    }
+  }
+  dctx.globalAlpha = 1;
+
+  // grid lines
+  dctx.strokeStyle = '#D7E3F0';
+  dctx.lineWidth = 1;
+  for (let g = DATA_MIN; g <= DATA_MAX; g += 2) {
+    const [pxv] = dataToPx(g, 0, w, h, margin);
+    const [, pyv] = dataToPx(0, g, w, h, margin);
+    dctx.beginPath();
+    dctx.moveTo(pxv, margin.top);
+    dctx.lineTo(pxv, margin.top + plotH);
+    dctx.stroke();
+    dctx.beginPath();
+    dctx.moveTo(margin.left, pyv);
+    dctx.lineTo(margin.left + plotW, pyv);
+    dctx.stroke();
+  }
+
+  // axis labels
+  dctx.fillStyle = '#6B7280';
+  dctx.font = '11px Arial';
+  dctx.textAlign = 'center';
+  for (let g = DATA_MIN; g <= DATA_MAX; g += 2) {
+    const [pxv] = dataToPx(g, 0, w, h, margin);
+    dctx.fillText(g.toString(), pxv, margin.top + plotH + 16);
+  }
+  dctx.textAlign = 'right';
+  for (let g = DATA_MIN; g <= DATA_MAX; g += 2) {
+    const [, pyv] = dataToPx(0, g, w, h, margin);
+    dctx.fillText(g.toString(), margin.left - 6, pyv + 3);
+  }
+  dctx.textAlign = 'center';
+  dctx.font = 'bold 12px Arial';
+  dctx.fillStyle = '#2B2B2B';
+  dctx.fillText('x\u2081', margin.left + plotW / 2, h - 4);
+  dctx.save();
+  dctx.translate(12, margin.top + plotH / 2);
+  dctx.rotate(-Math.PI / 2);
+  dctx.fillText('x\u2082', 0, 0);
+  dctx.restore();
+
+  // decision boundary line: W1*x1 + W2*x2 + B = 0  =>  x2 = -(W1*x1 + B)/W2
+  dctx.strokeStyle = '#FFFFFF';
+  dctx.lineWidth = 4;
+  dctx.beginPath();
+  let started = false;
+  if (Math.abs(W2) > 1e-6) {
+    for (let x1 = DATA_MIN; x1 <= DATA_MAX; x1 += 0.1) {
+      const x2 = -(W1 * x1 + B) / W2;
+      const [px, py] = dataToPx(x1, x2, w, h, margin);
+      if (!started) { dctx.moveTo(px, py); started = true; }
+      else dctx.lineTo(px, py);
+    }
+  } else if (Math.abs(W1) > 1e-6) {
+    const x1 = -B / W1;
+    const [px1, py1] = dataToPx(x1, DATA_MIN, w, h, margin);
+    const [px2, py2] = dataToPx(x1, DATA_MAX, w, h, margin);
+    dctx.moveTo(px1, py1);
+    dctx.lineTo(px2, py2);
+  }
+  dctx.stroke();
+  dctx.strokeStyle = '#1F4E79';
+  dctx.lineWidth = 1.5;
+  dctx.stroke();
+
+  // points
+  let correct = 0;
+  let loss = 0;
+  points.forEach(pt => {
+    const [px, py] = dataToPx(pt.x1, pt.x2, w, h, margin);
+    const z = W1 * pt.x1 + W2 * pt.x2 + B;
+    const prob = sigmoid(z);
+    const predicted = prob >= 0.5 ? 1 : 0;
+    const isCorrect = predicted === pt.label;
+    if (isCorrect) correct++;
+
+    const eps = 1e-9;
+    const pClamped = Math.min(Math.max(prob, eps), 1 - eps);
+    loss += pt.label === 1 ? -Math.log(pClamped) : -Math.log(1 - pClamped);
+
+    dctx.beginPath();
+    dctx.arc(px, py, 7, 0, Math.PI * 2);
+    dctx.fillStyle = pt.label === 1 ? '#E2725B' : '#2E75B6';
+    dctx.fill();
+    dctx.strokeStyle = isCorrect ? '#FFFFFF' : '#1A1A1A';
+    dctx.lineWidth = isCorrect ? 1.5 : 3;
+    dctx.stroke();
+  });
+
+  const acc = points.length ? correct / points.length : 0;
+  const avgLoss = points.length ? loss / points.length : 0;
+
+  document.getElementById('db-acc').textContent = (acc * 100).toFixed(1) + '%';
+  document.getElementById('db-loss').textContent = avgLoss.toFixed(3);
+}
+
+[w1Slider, w2Slider, biasSlider].forEach(el => el.addEventListener('input', () => {
+  document.getElementById('w1-val').textContent = parseFloat(w1Slider.value).toFixed(2);
+  document.getElementById('w2-val').textContent = parseFloat(w2Slider.value).toFixed(2);
+  document.getElementById('bias-val').textContent = parseFloat(biasSlider.value).toFixed(1);
+  drawDecisionBoundary();
+}));
+
+// click to add points
+dbCanvas.addEventListener('click', (e) => {
+  const rect = dbCanvas.getBoundingClientRect();
+  const margin = { left: 40, right: 16, top: 16, bottom: 34 };
+  const w = rect.width, h = rect.height;
+  const px = e.clientX - rect.left;
+  const py = e.clientY - rect.top;
+  const [x1, x2] = pxToData(px, py, w, h, margin);
+  if (x1 < DATA_MIN || x1 > DATA_MAX || x2 < DATA_MIN || x2 > DATA_MAX) return;
+  const label = parseInt(document.querySelector('input[name="addclass"]:checked').value);
+  points.push({ x1, x2, label });
+  drawDecisionBoundary();
+});
+
+// training via gradient descent
+let trainingHandle = null;
+let iteration = 0;
+
+function trainStep() {
+  const lr = 0.3;
+  let W1 = parseFloat(w1Slider.value);
+  let W2 = parseFloat(w2Slider.value);
+  let B = parseFloat(biasSlider.value);
+
+  let gW1 = 0, gW2 = 0, gB = 0;
+  points.forEach(pt => {
+    const z = W1 * pt.x1 + W2 * pt.x2 + B;
+    const pred = sigmoid(z);
+    const err = pred - pt.label;
+    gW1 += err * pt.x1;
+    gW2 += err * pt.x2;
+    gB += err;
+  });
+  const n = points.length || 1;
+  W1 -= lr * gW1 / n;
+  W2 -= lr * gW2 / n;
+  B -= lr * gB / n;
+
+  w1Slider.value = W1.toFixed(3);
+  w2Slider.value = W2.toFixed(3);
+  biasSlider.value = B.toFixed(3);
+  document.getElementById('w1-val').textContent = W1.toFixed(2);
+  document.getElementById('w2-val').textContent = W2.toFixed(2);
+  document.getElementById('bias-val').textContent = B.toFixed(1);
+
+  iteration++;
+  document.getElementById('db-iter').textContent = iteration;
+  drawDecisionBoundary();
+}
+
+document.getElementById('trainBtn').addEventListener('click', () => {
+  if (trainingHandle) {
+    clearInterval(trainingHandle);
+    trainingHandle = null;
+    document.getElementById('trainBtn').textContent = '▶ Treinar (gradiente descendente)';
+    return;
+  }
+  document.getElementById('trainBtn').textContent = '⏸ Pausar treinamento';
+  trainingHandle = setInterval(() => {
+    trainStep();
+    if (iteration >= 400) {
+      clearInterval(trainingHandle);
+      trainingHandle = null;
+      document.getElementById('trainBtn').textContent = '▶ Treinar (gradiente descendente)';
+    }
+  }, 30);
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (trainingHandle) { clearInterval(trainingHandle); trainingHandle = null; document.getElementById('trainBtn').textContent = '▶ Treinar (gradiente descendente)'; }
+  w1Slider.value = 0.5;
+  w2Slider.value = 0.5;
+  biasSlider.value = 0;
+  document.getElementById('w1-val').textContent = '0.50';
+  document.getElementById('w2-val').textContent = '0.50';
+  document.getElementById('bias-val').textContent = '0.0';
+  iteration = 0;
+  document.getElementById('db-iter').textContent = '0';
+  drawDecisionBoundary();
+});
+
+document.getElementById('newDataBtn').addEventListener('click', () => {
+  generateData();
+  drawDecisionBoundary();
+});
+
+// initial render
+generateData();
+drawSigmoid();
+drawDecisionBoundary();
+window.addEventListener('resize', () => { drawSigmoid(); drawDecisionBoundary(); });
+</script>
+
+</body>
+</html>
